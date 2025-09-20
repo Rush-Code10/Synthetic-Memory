@@ -11,6 +11,10 @@ Synthetic Memory Lite showcases how AI agents can intelligently search across mu
 - **Multi-source Search**: Searches across emails, Slack messages, and documents
 - **AI-powered Search Terms**: Uses Gemini AI to generate relevant search terms from natural language queries
 - **Intelligent Synthesis**: Combines search results into coherent responses with source attribution
+- **Text-to-Speech**: High-quality voice synthesis using Google Text-to-Speech (gTTS)
+- **Voice Selection**: Choose from 12 different English voices (US, UK, AU, CA, IN, IE, ZA, NZ)
+- **Audio Controls**: Play, pause, and download responses as MP3 files
+- **Interactive UI**: Voice preview, speed control, and real-time synthesis
 - **Error Handling**: Graceful handling of missing data, API failures, and invalid inputs
 - **Performance Optimized**: Fast response times suitable for live demonstrations
 
@@ -36,11 +40,15 @@ The application searches through three types of data:
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   pip install streamlit google-generativeai
+   pip install -r requirements.txt
    ```
-3. Set up your Gemini API key in `.streamlit/secrets.toml`:
+   Or manually:
+   ```bash
+   pip install streamlit google-generativeai gtts
+   ```
+3. Set up your API key in `.streamlit/secrets.toml`:
    ```toml
-   GEMINI_API_KEY = "your-api-key-here"
+   GEMINI_API_KEY = "your-gemini-api-key-here"
    ```
 4. Ensure data files are present: `emails.json`, `slack_messages.json`, `project_notes.txt`
 
@@ -61,6 +69,7 @@ This query demonstrates the complete workflow:
 1. AI generates relevant search terms
 2. System searches all data sources
 3. Results are synthesized with proper source attribution
+4. **NEW**: Response is converted to natural-sounding speech (optional)
 
 ### Expected Output Format
 
@@ -75,6 +84,16 @@ Sources:
 • Slack message from user in #channel: Date - Description
 • Document: Document name with relevant content
 ```
+
+### Text-to-Speech Features
+
+The application includes advanced text-to-speech capabilities:
+
+- **Voice Selection**: Choose from 12 high-quality English voices including US, UK, Australian, Canadian, Indian, Irish, South African, and New Zealand accents
+- **Speed Control**: Adjust speech speed from 0.5x to 2.0x normal speed
+- **Voice Preview**: Test voices before generating full responses
+- **Audio Download**: Download responses as MP3 files for offline listening
+- **Smart Text Cleaning**: Automatically removes markdown formatting and optimizes text for natural speech
 
 ## Testing
 
@@ -104,9 +123,16 @@ python demo_validation.py
 
 ### Google Gemini API
 
-The application uses Google's Gemini Pro model for:
+The application uses Google's Gemini 2.0 Flash model for:
 - **Search Term Generation**: Converting natural language queries into search terms
 - **Result Synthesis**: Combining search results into coherent responses
+
+### ElevenLabs API
+
+The application uses ElevenLabs for:
+- **Text-to-Speech**: Converting AI responses to natural-sounding speech
+- **Voice Selection**: Multiple voice options with different accents and characteristics
+- **Voice Customization**: Adjustable stability and similarity settings
 
 ### Configuration
 
@@ -115,6 +141,7 @@ API configuration includes:
 - Timeout handling
 - Quota management
 - Error recovery with fallback processing
+- Voice synthesis with error handling
 
 ## Error Handling
 
@@ -168,6 +195,7 @@ synthetic-memory-lite/
 - Python 3.8+
 - Streamlit 1.28+
 - google-generativeai 0.3+
+- gtts 2.3+
 - Valid Google Gemini API key
 
 ## License

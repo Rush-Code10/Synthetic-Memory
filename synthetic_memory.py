@@ -12,6 +12,10 @@ import google.generativeai as genai
 from typing import List, Dict, Tuple
 import os
 from datetime import datetime
+import tempfile
+import base64
+from gtts import gTTS
+import io
 
 
 class AgentThought:
@@ -49,6 +53,164 @@ def clear_agent_thoughts():
     """Clear all agent thoughts from session state"""
     if 'agent_thoughts' in st.session_state:
         st.session_state.agent_thoughts = []
+
+
+# TTS Configuration and Functions
+def get_available_voices():
+    """Get list of available high-quality TTS voices"""
+    return {
+        "English (US) - Female": {"lang": "en", "tld": "us", "slow": False},
+        "English (US) - Male": {"lang": "en", "tld": "us", "slow": False, "gender": "male"},
+        "English (UK) - Female": {"lang": "en", "tld": "co.uk", "slow": False},
+        "English (UK) - Male": {"lang": "en", "tld": "co.uk", "slow": False, "gender": "male"},
+        "English (AU) - Female": {"lang": "en", "tld": "com.au", "slow": False},
+        "English (CA) - Female": {"lang": "en", "tld": "ca", "slow": False},
+        "English (IN) - Female": {"lang": "en", "tld": "co.in", "slow": False},
+        "English (IE) - Female": {"lang": "en", "tld": "ie", "slow": False},
+        "English (ZA) - Female": {"lang": "en", "tld": "co.za", "slow": False},
+        "English (NZ) - Female": {"lang": "en", "tld": "co.nz", "slow": False},
+        "English (Slow) - Female": {"lang": "en", "tld": "us", "slow": True},
+        "English (Slow) - Male": {"lang": "en", "tld": "us", "slow": True, "gender": "male"},
+    }
+
+
+def configure_tts():
+    """Configure TTS settings in session state"""
+    if 'tts_voice' not in st.session_state:
+        st.session_state.tts_voice = "English (US) - Female"
+    if 'tts_enabled' not in st.session_state:
+        st.session_state.tts_enabled = True
+    if 'tts_speed' not in st.session_state:
+        st.session_state.tts_speed = 1.0
+
+
+def text_to_speech(text: str, voice_name: str = None) -> str:
+    """
+    Convert text to speech using gTTS with high-quality voices
+    
+    Args:
+        text: Text to convert to speech
+        voice_name: Name of the voice to use (from get_available_voices)
+        
+    Returns:
+        Base64 encoded audio data for Streamlit audio player
+    """
+    if not text or not text.strip():
+        return None
+    
+    # Get voice configuration
+    voices = get_available_voices()
+    if voice_name is None:
+        voice_name = st.session_state.get('tts_voice', 'English (US) - Female')
+    
+    voice_config = voices.get(voice_name, voices['English (US) - Female'])
+    
+    try:
+        # Clean text for better TTS pronunciation
+        cleaned_text = clean_text_for_tts(text)
+        
+        # Create gTTS object
+        tts = gTTS(
+            text=cleaned_text,
+            lang=voice_config['lang'],
+            tld=voice_config['tld'],
+            slow=voice_config.get('slow', False)
+        )
+        
+        # Generate audio in memory
+        audio_buffer = io.BytesIO()
+        tts.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        
+        # Convert to base64 for Streamlit
+        audio_data = audio_buffer.getvalue()
+        audio_base64 = base64.b64encode(audio_data).decode()
+        
+        return f"data:audio/mp3;base64,{audio_base64}"
+        
+    except Exception as e:
+        st.error(f"Text-to-speech conversion failed: {str(e)}")
+        return None
+
+
+def clean_text_for_tts(text: str) -> str:
+    """
+    Clean text for better TTS pronunciation
+    
+    Args:
+        text: Raw text to clean
+        
+    Returns:
+        Cleaned text optimized for TTS
+    """
+    if not text:
+        return ""
+    
+    # Remove markdown formatting
+    import re
+    cleaned = text
+    
+    # Remove markdown headers
+    cleaned = re.sub(r'^#+\s*', '', cleaned, flags=re.MULTILINE)
+    
+    # Remove markdown bold/italic
+    cleaned = re.sub(r'\*\*(.*?)\*\*', r'\1', cleaned)
+    cleaned = re.sub(r'\*(.*?)\*', r'\1', cleaned)
+    
+    # Remove markdown links but keep text
+    cleaned = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', cleaned)
+    
+    # Remove superscript citations like ^1^ ^2^
+    cleaned = re.sub(r'\^(\d+)\^', '', cleaned)
+    
+    # Remove bullet points and replace with pauses
+    cleaned = re.sub(r'^[\s]*•[\s]*', ' - ', cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r'^[\s]*-\s*', ' - ', cleaned, flags=re.MULTILINE)
+    
+    # Replace multiple spaces with single space
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    
+    # Add pauses for better speech flow
+    cleaned = re.sub(r'\.\s+', '. ', cleaned)  # Normal periods
+    cleaned = re.sub(r'\?\s+', '? ', cleaned)  # Questions
+    cleaned = re.sub(r'!\s+', '! ', cleaned)   # Exclamations
+    
+    # Add pause after colons
+    cleaned = re.sub(r':\s*', ': ', cleaned)
+    
+    # Clean up extra whitespace
+    cleaned = cleaned.strip()
+    
+    return cleaned
+
+
+def create_audio_player(audio_data: str, text: str = None) -> None:
+    """
+    Create an audio player widget in Streamlit
+    
+    Args:
+        audio_data: Base64 encoded audio data
+        text: Optional text to display with the player
+    """
+    if not audio_data:
+        return
+    
+    if text:
+        st.markdown(f"**Audio Response:** {text[:100]}{'...' if len(text) > 100 else ''}")
+    
+    # Create audio player
+    st.audio(audio_data, format="audio/mp3")
+    
+    # Add download button
+    if st.button("📥 Download Audio", key="download_audio"):
+        # Create download link
+        b64 = audio_data.split(',')[1]
+        st.download_button(
+            label="Download MP3",
+            data=base64.b64decode(b64),
+            file_name="synthetic_memory_response.mp3",
+            mime="audio/mp3"
+        )
 
 
 def tag_search_results_with_ids(email_results: List[Dict], slack_results: List[Dict], document_result: str) -> Tuple[List[Dict], List[Dict], str, Dict]:
@@ -1311,6 +1473,9 @@ def main():
         st.title("Synthetic Memory Lite")
         st.markdown("*AI-powered information retrieval from your personal data*")
         
+        # Configure TTS settings
+        configure_tts()
+        
         # Add system status check at startup
         startup_errors = []
         
@@ -1351,6 +1516,50 @@ def main():
                 st.warning(f"Query length: {char_count}/500 characters")
             elif char_count > 0:
                 st.caption(f"Query length: {char_count}/500 characters")
+        
+        # TTS Controls Section
+        with st.expander("🔊 Text-to-Speech Settings", expanded=False):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Voice selection
+                voices = get_available_voices()
+                selected_voice = st.selectbox(
+                    "Select Voice:",
+                    options=list(voices.keys()),
+                    index=list(voices.keys()).index(st.session_state.tts_voice),
+                    help="Choose from high-quality TTS voices"
+                )
+                st.session_state.tts_voice = selected_voice
+                
+                # TTS enable/disable
+                tts_enabled = st.checkbox(
+                    "Enable Text-to-Speech",
+                    value=st.session_state.tts_enabled,
+                    help="Convert responses to speech automatically"
+                )
+                st.session_state.tts_enabled = tts_enabled
+            
+            with col2:
+                # Voice preview
+                if st.button("🎵 Preview Voice", help="Test the selected voice"):
+                    preview_text = "Hello! This is a preview of the selected voice. The text-to-speech feature will read your responses aloud."
+                    audio_data = text_to_speech(preview_text, selected_voice)
+                    if audio_data:
+                        st.audio(audio_data, format="audio/mp3")
+                    else:
+                        st.error("Failed to generate voice preview")
+                
+                # TTS speed control
+                tts_speed = st.slider(
+                    "Speech Speed",
+                    min_value=0.5,
+                    max_value=2.0,
+                    value=st.session_state.tts_speed,
+                    step=0.1,
+                    help="Adjust the speed of speech (1.0 = normal speed)"
+                )
+                st.session_state.tts_speed = tts_speed
         
         # Add "Find Context" button to trigger agent workflow
         if st.button("Find Context", type="primary"):
@@ -1514,6 +1723,9 @@ def main():
         st.title("Synthetic Memory Lite")
         st.markdown("*AI-powered information retrieval from your personal data*")
         
+        # Configure TTS settings
+        configure_tts()
+        
         # Add system status check at startup
         startup_errors = []
         
@@ -1555,6 +1767,50 @@ def main():
             elif char_count > 0:
                 st.caption(f"Query length: {char_count}/500 characters")
         
+        # TTS Controls Section
+        with st.expander("🔊 Text-to-Speech Settings", expanded=False):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Voice selection
+                voices = get_available_voices()
+                selected_voice = st.selectbox(
+                    "Select Voice:",
+                    options=list(voices.keys()),
+                    index=list(voices.keys()).index(st.session_state.tts_voice),
+                    help="Choose from high-quality TTS voices"
+                )
+                st.session_state.tts_voice = selected_voice
+                
+                # TTS enable/disable
+                tts_enabled = st.checkbox(
+                    "Enable Text-to-Speech",
+                    value=st.session_state.tts_enabled,
+                    help="Convert responses to speech automatically"
+                )
+                st.session_state.tts_enabled = tts_enabled
+            
+            with col2:
+                # Voice preview
+                if st.button("🎵 Preview Voice", help="Test the selected voice"):
+                    preview_text = "Hello! This is a preview of the selected voice. The text-to-speech feature will read your responses aloud."
+                    audio_data = text_to_speech(preview_text, selected_voice)
+                    if audio_data:
+                        st.audio(audio_data, format="audio/mp3")
+                    else:
+                        st.error("Failed to generate voice preview")
+                
+                # TTS speed control
+                tts_speed = st.slider(
+                    "Speech Speed",
+                    min_value=0.5,
+                    max_value=2.0,
+                    value=st.session_state.tts_speed,
+                    step=0.1,
+                    help="Adjust the speed of speech (1.0 = normal speed)"
+                )
+                st.session_state.tts_speed = tts_speed
+        
         # Add "Find Context" button to trigger agent workflow
         if st.button("Find Context", type="primary"):
             # Enhanced input validation
@@ -1583,6 +1839,17 @@ def main():
                         source_mapping = getattr(st.session_state, 'source_mapping', {})
                         display_answer_with_sources(st.session_state.final_response, source_mapping)
                         
+                        # Generate TTS audio for structured response
+                        if st.session_state.tts_enabled:
+                            response_text = st.session_state.final_response.get('answer', '')
+                            if response_text:
+                                with st.spinner("🔊 Generating audio..."):
+                                    audio_data = text_to_speech(response_text, st.session_state.tts_voice)
+                                    if audio_data:
+                                        st.markdown("---")
+                                        st.markdown("### 🔊 Audio Response")
+                                        create_audio_player(audio_data, response_text[:100])
+                        
                         # Show fallback warning if needed
                         if st.session_state.final_response.get('_fallback'):
                             st.warning("⚠️ This response was generated using fallback processing due to an error.")
@@ -1594,6 +1861,15 @@ def main():
                         # Fallback to old display method for backward compatibility
                         st.write("### Results")
                         st.write(result)
+                        
+                        # Generate TTS audio for fallback response
+                        if st.session_state.tts_enabled:
+                            with st.spinner("🔊 Generating audio..."):
+                                audio_data = text_to_speech(str(result), st.session_state.tts_voice)
+                                if audio_data:
+                                    st.markdown("---")
+                                    st.markdown("### 🔊 Audio Response")
+                                    create_audio_player(audio_data, str(result)[:100])
                     
                     # Show the agent's thinking process
                     show_agent_thinking()
@@ -1619,6 +1895,7 @@ def main():
             - Searches through your emails, Slack messages, and documents
             - Uses AI to understand your questions and find relevant information
             - Provides answers with clear source attribution and inline citations
+            - **NEW**: Converts responses to high-quality speech using text-to-speech
             
             **Example queries:**
             - "What was the feedback on Project Phoenix?"
@@ -1631,10 +1908,13 @@ def main():
             - Use key terms that might appear in your data
             - Ask about specific people, projects, or topics
             
-            **New Features:**
+            **Features:**
             - **Inline Citations**: Numbers like ¹ ² ³ in answers link to original sources
             - **Source Verification**: Click on source sections to see full original data
             - **Agent Thinking**: See how the AI processes your query step by step
+            - **Text-to-Speech**: Listen to responses with high-quality voices
+            - **Voice Selection**: Choose from multiple English accents and speeds
+            - **Audio Download**: Download responses as MP3 files
             """)
         
     except Exception as e:
