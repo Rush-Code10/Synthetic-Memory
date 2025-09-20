@@ -1,212 +1,287 @@
-# Synthetic Memory Lite
+# Synthetic Memory Lite - Flask Web Application
 
-AI-powered information retrieval and synthesis demo application that demonstrates agentic AI capabilities by intelligently searching through emails, chat messages, and documents to provide contextual answers using Google Gemini API.
+A professional, modern web application for AI-powered information retrieval and synthesis with advanced text-to-speech capabilities.
 
-## Overview
+## 🚀 Features
 
-Synthetic Memory Lite showcases how AI agents can intelligently search across multiple data sources and synthesize information to answer user queries. The application uses Google's Gemini AI to generate relevant search terms and synthesize results with proper source attribution.
+### Core Functionality
+- **Multi-source Search**: Intelligently searches across emails, Slack messages, and documents
+- **AI-Powered Analysis**: Uses Google Gemini AI for query understanding and result synthesis
+- **Source Attribution**: Provides detailed citations and source verification
+- **Real-time Processing**: Fast, responsive search with live status updates
 
-## Features
-
-- **Multi-source Search**: Searches across emails, Slack messages, and documents
-- **AI-powered Search Terms**: Uses Gemini AI to generate relevant search terms from natural language queries
-- **Intelligent Synthesis**: Combines search results into coherent responses with source attribution
-- **Text-to-Speech**: High-quality voice synthesis using Google Text-to-Speech (gTTS)
-- **Voice Selection**: Choose from 12 different English voices (US, UK, AU, CA, IN, IE, ZA, NZ)
-- **Audio Controls**: Play, pause, and download responses as MP3 files
-- **Interactive UI**: Voice preview, speed control, and real-time synthesis
-- **Error Handling**: Graceful handling of missing data, API failures, and invalid inputs
-- **Performance Optimized**: Fast response times suitable for live demonstrations
-
-## Architecture
-
-The application follows a microservices-inspired architecture with clear separation of concerns:
-
-- **Data Loading**: Handles JSON and text file parsing with validation
-- **Search Engine**: Case-insensitive substring matching across all data sources
-- **AI Integration**: Google Gemini API for search term generation and result synthesis
-- **User Interface**: Streamlit web application with responsive design
-
-## Data Sources
-
-The application searches through three types of data:
-
-1. **Emails** (`emails.json`): Email communications with from, date, subject, and body fields
-2. **Slack Messages** (`slack_messages.json`): Chat messages with channel, user, date, and message fields
-3. **Documents** (`project_notes.txt`): Plain text documentation and notes
-
-## Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   Or manually:
-   ```bash
-   pip install streamlit google-generativeai gtts
-   ```
-3. Set up your API key in `.streamlit/secrets.toml`:
-   ```toml
-   GEMINI_API_KEY = "your-gemini-api-key-here"
-   ```
-4. Ensure data files are present: `emails.json`, `slack_messages.json`, `project_notes.txt`
-
-## Usage
-
-### Running the Application
-
-```bash
-streamlit run synthetic_memory.py
-```
-
-### Demo Query
-
-The application comes pre-configured with a demo query:
-"What was the feedback on Project Phoenix?"
-
-This query demonstrates the complete workflow:
-1. AI generates relevant search terms
-2. System searches all data sources
-3. Results are synthesized with proper source attribution
-4. **NEW**: Response is converted to natural-sounding speech (optional)
-
-### Expected Output Format
-
-```
-Based on the data provided:
-• Key finding 1
-• Key finding 2
-• Key finding 3
-
-Sources:
-• Email from user@company.com: Date - Description
-• Slack message from user in #channel: Date - Description
-• Document: Document name with relevant content
-```
-
-### Text-to-Speech Features
-
-The application includes advanced text-to-speech capabilities:
-
-- **Voice Selection**: Choose from 12 high-quality English voices including US, UK, Australian, Canadian, Indian, Irish, South African, and New Zealand accents
-- **Speed Control**: Adjust speech speed from 0.5x to 2.0x normal speed
+### Text-to-Speech (TTS)
+- **12 High-Quality Voices**: Multiple English accents (US, UK, AU, CA, IN, IE, ZA, NZ)
 - **Voice Preview**: Test voices before generating full responses
-- **Audio Download**: Download responses as MP3 files for offline listening
-- **Smart Text Cleaning**: Automatically removes markdown formatting and optimizes text for natural speech
+- **Speed Control**: Adjustable speech speed from 0.5x to 2.0x
+- **Audio Download**: Download responses as MP3 files
+- **Smart Text Processing**: Automatically optimizes text for natural speech
 
-## Testing
+### Professional UI/UX
+- **Modern Design**: Clean, professional interface with smooth animations
+- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile
+- **Interactive Elements**: Hover effects, loading states, and smooth transitions
+- **Real-time Feedback**: Live status indicators and progress tracking
+- **Accessibility**: Keyboard navigation and screen reader support
 
-The application includes comprehensive test coverage:
+## 🎨 Design Features
 
-### Running Unit Tests
+### Visual Elements
+- **Gradient Backgrounds**: Beautiful color gradients throughout the interface
+- **Smooth Animations**: Fade-in, slide-up, and hover effects
+- **Professional Typography**: Inter font family for optimal readability
+- **Color-coded Status**: Visual indicators for different states
+- **Card-based Layout**: Clean, organized information presentation
+
+### Interactive Components
+- **Animated Loading Screen**: Professional startup experience
+- **Dynamic Status Indicators**: Real-time system status updates
+- **Expandable Panels**: Collapsible sections for better organization
+- **Modal Dialogs**: Clean popup interfaces for audio playback
+- **Toast Notifications**: Non-intrusive success/error messages
+
+## 🛠️ Installation
+
+### Prerequisites
+- Python 3.8+
+- Google Gemini API key
+
+### Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd synthetic-memory
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements_flask.txt
+   ```
+
+3. **Configure API key**
+   ```bash
+   # Create .streamlit/secrets.toml
+   echo 'GEMINI_API_KEY = "your-api-key-here"' > .streamlit/secrets.toml
+   ```
+
+4. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+5. **Open in browser**
+   ```
+   http://localhost:5000
+   ```
+
+### Manual Installation
+
 ```bash
-python run_tests.py
+pip install flask flask-session google-generativeai gtts toml
 ```
 
-### Running Integration Tests
-```bash
-python test_integration.py
+## 📁 Project Structure
+
+```
+synthetic-memory/
+├── app.py                          # Main Flask application
+├── synthetic_memory.py             # Core business logic
+├── requirements_flask.txt          # Flask dependencies
+├── templates/
+│   └── index.html                  # Main HTML template
+├── static/
+│   ├── css/
+│   │   └── style.css              # Professional CSS with animations
+│   └── js/
+│       └── app.js                 # Interactive JavaScript
+├── .streamlit/
+│   └── secrets.toml               # API configuration
+├── emails.json                    # Sample email data
+├── slack_messages.json            # Sample Slack data
+├── project_notes.txt              # Sample document
+└── test_flask_app.py              # Test script
 ```
 
-### Demo Validation
+## 🎯 Usage
+
+### Basic Search
+1. Enter your question in the search box
+2. Click "Find Context" or press Enter
+3. View AI-generated results with source citations
+4. Use TTS to listen to responses (optional)
+
+### Text-to-Speech
+1. Expand "Text-to-Speech Settings"
+2. Select your preferred voice
+3. Adjust speech speed if needed
+4. Click "Preview Voice" to test
+5. Enable TTS for automatic audio generation
+
+### Quick Queries
+Use the pre-built quick query buttons:
+- "Project Phoenix Feedback"
+- "Budget Concerns"
+- "Project Notes"
+
+## 🔧 API Endpoints
+
+### Main Endpoints
+- `GET /` - Main application page
+- `GET /api/status` - Application status and data counts
+- `GET /api/voices` - Available TTS voices
+
+### Query Endpoints
+- `POST /api/query` - Process search queries
+- `POST /api/tts` - Generate text-to-speech audio
+- `POST /api/tts/preview` - Preview voice samples
+
+### Request/Response Format
+
+#### Query Request
+```json
+{
+  "query": "What was the feedback on Project Phoenix?",
+  "tts_enabled": true,
+  "voice": "English (US) - Female"
+}
+```
+
+#### Query Response
+```json
+{
+  "success": true,
+  "query": "What was the feedback on Project Phoenix?",
+  "search_terms": ["Project Phoenix", "feedback", "review"],
+  "response": {
+    "answer": "Based on the data provided...",
+    "sources": [
+      {
+        "id": 1,
+        "type": "email",
+        "content_snippet": "The technical approach looks solid...",
+        "metadata": {
+          "from": "sarah.chen@company.com",
+          "date": "2024-03-15"
+        }
+      }
+    ]
+  },
+  "stats": {
+    "email_results": 6,
+    "slack_results": 6,
+    "document_found": true
+  }
+}
+```
+
+## 🎨 Customization
+
+### Styling
+Modify `static/css/style.css` to customize:
+- Color scheme (CSS variables in `:root`)
+- Animations and transitions
+- Layout and spacing
+- Typography and fonts
+
+### Functionality
+Extend `static/js/app.js` to add:
+- New interactive features
+- Additional API endpoints
+- Custom animations
+- Enhanced user experience
+
+### Backend
+Modify `app.py` to add:
+- New API endpoints
+- Additional data sources
+- Enhanced processing logic
+- Custom error handling
+
+## 🧪 Testing
+
+### Run Tests
 ```bash
-python demo_validation.py
+python test_flask_app.py
 ```
 
 ### Test Coverage
-- **Unit Tests**: 58 tests covering core functionality
-- **Integration Tests**: 18 tests covering end-to-end workflows
-- **Demo Validation**: 6 checks ensuring presentation readiness
+- ✅ Application startup
+- ✅ API endpoints
+- ✅ Query processing
+- ✅ TTS functionality
+- ✅ Error handling
 
-## API Integration
+## 🚀 Deployment
 
-### Google Gemini API
+### Production Setup
+1. **Environment Variables**
+   ```bash
+   export GEMINI_API_KEY="your-api-key"
+   export FLASK_ENV="production"
+   ```
 
-The application uses Google's Gemini 2.0 Flash model for:
-- **Search Term Generation**: Converting natural language queries into search terms
-- **Result Synthesis**: Combining search results into coherent responses
+2. **WSGI Server**
+   ```bash
+   pip install gunicorn
+   gunicorn -w 4 -b 0.0.0.0:5000 app:app
+   ```
 
-### ElevenLabs API
+3. **Docker** (optional)
+   ```dockerfile
+   FROM python:3.9-slim
+   COPY . /app
+   WORKDIR /app
+   RUN pip install -r requirements_flask.txt
+   EXPOSE 5000
+   CMD ["python", "app.py"]
+   ```
 
-The application uses ElevenLabs for:
-- **Text-to-Speech**: Converting AI responses to natural-sounding speech
-- **Voice Selection**: Multiple voice options with different accents and characteristics
-- **Voice Customization**: Adjustable stability and similarity settings
+## 🔒 Security
 
-### Configuration
+- **Input Validation**: All user inputs are validated and sanitized
+- **API Key Protection**: Secure storage in configuration files
+- **Error Handling**: Graceful error handling without information leakage
+- **Rate Limiting**: Built-in protection against abuse
 
-API configuration includes:
-- Automatic retry logic
-- Timeout handling
-- Quota management
-- Error recovery with fallback processing
-- Voice synthesis with error handling
+## 📊 Performance
 
-## Error Handling
+- **Fast Response Times**: < 2 seconds for typical queries
+- **Efficient Processing**: Optimized search algorithms
+- **Caching**: Session-based caching for improved performance
+- **Responsive UI**: Smooth animations without performance impact
 
-The application provides graceful error handling for:
-- Missing or corrupted data files
-- API configuration issues
-- Network connectivity problems
-- Invalid user inputs
-- AI service failures
+## 🌟 Key Improvements Over Streamlit
 
-All errors are presented with user-friendly messages and troubleshooting guidance.
+1. **Professional UI**: Modern, polished interface with animations
+2. **Better Performance**: Faster loading and more responsive
+3. **Mobile Support**: Fully responsive design
+4. **Enhanced TTS**: Better voice selection and controls
+5. **Real-time Feedback**: Live status updates and progress indicators
+6. **Modular Architecture**: Clean separation of concerns
+7. **API-First Design**: Easy to extend and integrate
+8. **Production Ready**: Proper error handling and logging
 
-## Performance
+## 🤝 Contributing
 
-- **Data Loading**: < 0.1 seconds
-- **Search Operations**: < 0.1 seconds
-- **Complete Workflow**: < 5 seconds (typically ~0.2 seconds)
-- **Memory Usage**: Optimized for large document processing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-## Security
+## 📄 License
 
-- Input validation prevents injection attacks
-- API key management through Streamlit secrets
-- No sensitive data exposure in error messages
-- Secure handling of user queries
+This project is for educational and demonstration purposes.
 
-## Development
+## 🆘 Support
 
-### Project Structure
-```
-synthetic-memory-lite/
-├── synthetic_memory.py          # Main application
-├── test_synthetic_memory.py     # Unit tests
-├── test_integration.py          # Integration tests
-├── demo_validation.py           # Demo validation script
-├── run_tests.py                 # Test runner
-├── emails.json                  # Sample email data
-├── slack_messages.json          # Sample Slack data
-├── project_notes.txt            # Sample document
-└── README.md                    # This file
-```
+For issues and questions:
+1. Check the test results: `python test_flask_app.py`
+2. Verify API key configuration
+3. Check browser console for JavaScript errors
+4. Review Flask application logs
 
-### Code Quality
-- Comprehensive docstrings for all functions
-- Type hints for better code maintainability
-- Error handling with specific exception types
-- Modular design for easy testing and extension
+---
 
-## Requirements
-
-- Python 3.8+
-- Streamlit 1.28+
-- google-generativeai 0.3+
-- gtts 2.3+
-- Valid Google Gemini API key
-
-## License
-
-This project is a demonstration application for educational and hackathon purposes.
-
-## Contributing
-
-This is a demo application. For production use, consider:
-- Database integration for larger datasets
-- Advanced search algorithms (vector search, semantic search)
-- User authentication and authorization
-- Caching mechanisms for improved performance
-- Advanced AI prompt engineering for better results
+**Synthetic Memory Lite** - Transforming how you interact with your personal data through AI-powered search and synthesis. 🧠✨
