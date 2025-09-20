@@ -11,6 +11,219 @@ import json
 import google.generativeai as genai
 from typing import List, Dict, Tuple
 import os
+from datetime import datetime
+
+
+class AgentThought:
+    """Represents a single step in the agent's thinking process"""
+    
+    def __init__(self, step_name: str, input_data: any, output_data: any, 
+                 timestamp: datetime = None, metadata: Dict = None):
+        self.step_name = step_name
+        self.input_data = input_data
+        self.output_data = output_data
+        self.timestamp = timestamp or datetime.now()
+        self.metadata = metadata or {}
+    
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'step_name': self.step_name,
+            'input_data': self.input_data,
+            'output_data': self.output_data,
+            'timestamp': self.timestamp.isoformat(),
+            'metadata': self.metadata
+        }
+
+
+def add_agent_thought(step_name: str, input_data: any, output_data: any, metadata: Dict = None):
+    """Add a thought to the agent's thinking process in session state"""
+    if 'agent_thoughts' not in st.session_state:
+        st.session_state.agent_thoughts = []
+    
+    thought = AgentThought(step_name, input_data, output_data, metadata=metadata)
+    st.session_state.agent_thoughts.append(thought)
+
+
+def clear_agent_thoughts():
+    """Clear all agent thoughts from session state"""
+    if 'agent_thoughts' in st.session_state:
+        st.session_state.agent_thoughts = []
+
+
+def tag_search_results_with_ids(email_results: List[Dict], slack_results: List[Dict], document_result: str) -> Tuple[List[Dict], List[Dict], str, Dict]:
+    """
+    Add unique IDs to search results and create a source mapping
+    
+    Args:
+        email_results: List of email dictionaries
+        slack_results: List of Slack message dictionaries
+        document_result: Document text if found
+        
+    Returns:
+        Tuple of (tagged_emails, tagged_slack, tagged_document, source_mapping)
+    """
+    source_mapping = {}
+    current_id = 1
+    
+    # Tag email results
+    tagged_emails = []
+    for email in email_results:
+        tagged_email = email.copy()
+        tagged_email['_source_id'] = current_id
+        tagged_email['_source_type'] = 'email'
+        source_mapping[current_id] = {
+            'type': 'email',
+            'data': tagged_email,
+            'description': f"Email from {email.get('from', 'Unknown')} on {email.get('date', 'Unknown')}"
+        }
+        tagged_emails.append(tagged_email)
+        current_id += 1
+    
+    # Tag Slack results
+    tagged_slack = []
+    for msg in slack_results:
+        tagged_msg = msg.copy()
+        tagged_msg['_source_id'] = current_id
+        tagged_msg['_source_type'] = 'slack'
+        source_mapping[current_id] = {
+            'type': 'slack',
+            'data': tagged_msg,
+            'description': f"Slack message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')} on {msg.get('date', 'Unknown')}"
+        }
+        tagged_slack.append(tagged_msg)
+        current_id += 1
+    
+    # Tag document result
+    tagged_document = document_result
+    if document_result:
+        source_mapping[current_id] = {
+            'type': 'document',
+            'data': {'content': document_result, 'name': 'project_notes.txt'},
+            'description': "Project documentation and notes"
+        }
+        tagged_document = f"[DOCUMENT_ID:{current_id}] {document_result}"
+        current_id += 1
+    
+    return tagged_emails, tagged_slack, tagged_document, source_mapping
+
+
+def display_answer_with_sources(final_response: Dict, source_mapping: Dict):
+    """
+    Display the answer with inline citations and expandable source details
+    
+    Args:
+        final_response: Dictionary with 'answer' and 'sources' keys
+        source_mapping: Mapping of source IDs to source data
+    """
+    if not isinstance(final_response, dict) or 'answer' not in final_response:
+        st.error("Invalid response format")
+        return
+    
+    answer = final_response.get('answer', '')
+    sources = final_response.get('sources', [])
+    
+    # Display the answer with superscript citations
+    st.markdown("### Answer")
+    
+    # Convert [1] to superscript ¹ using Markdown
+    import re
+    answer_with_superscript = re.sub(r'\[(\d+)\]', r'^\1^', answer)
+    st.markdown(answer_with_superscript)
+    
+    # Display sources section
+    if sources:
+        st.markdown("### Sources")
+        
+        for i, source_ref in enumerate(sources, 1):
+            source_id = source_ref.get('id')
+            source_type = source_ref.get('type', 'unknown')
+            content_snippet = source_ref.get('content_snippet', '')
+            
+            if source_id in source_mapping:
+                source_data = source_mapping[source_id]
+                source_description = source_data['description']
+                
+                # Create expandable source section
+                with st.expander(f"[{i}] {source_type.title()}: {source_description}", expanded=False):
+                    st.markdown(f"**Content Snippet:** {content_snippet}")
+                    st.markdown("**Full Source Data:**")
+                    st.json(source_data['data'])
+            else:
+                # Fallback if source ID not found
+                with st.expander(f"[{i}] {source_type.title()}: Source not found", expanded=False):
+                    st.warning(f"Source ID {source_id} not found in mapping")
+                    st.json(source_ref)
+
+
+def show_agent_thinking():
+    """Display the agent's thinking process in an expandable UI component"""
+    if 'agent_thoughts' not in st.session_state or not st.session_state.agent_thoughts:
+        return
+    
+    with st.expander("🧠 See the Agent's Thinking", expanded=False):
+        st.markdown("**Here's how the AI agent processed your query:**")
+        
+        for i, thought in enumerate(st.session_state.agent_thoughts, 1):
+            with st.container():
+                # Step header
+                st.markdown(f"### Step {i}: {thought.step_name}")
+                
+                # Input section
+                st.markdown("**📥 Input:**")
+                if isinstance(thought.input_data, str):
+                    if len(thought.input_data) > 200:
+                        st.text_area("", thought.input_data, height=100, key=f"input_{i}", disabled=True)
+                    else:
+                        st.write(thought.input_data)
+                elif isinstance(thought.input_data, list):
+                    if len(thought.input_data) > 10:
+                        st.write(f"List with {len(thought.input_data)} items:")
+                        st.json(thought.input_data[:5])
+                        if len(thought.input_data) > 5:
+                            st.write(f"... and {len(thought.input_data) - 5} more items")
+                    else:
+                        st.json(thought.input_data)
+                else:
+                    st.json(thought.input_data)
+                
+                # Output section
+                st.markdown("**📤 Output:**")
+                if isinstance(thought.output_data, str):
+                    if len(thought.output_data) > 300:
+                        st.text_area("", thought.output_data, height=150, key=f"output_{i}", disabled=True)
+                    else:
+                        st.write(thought.output_data)
+                elif isinstance(thought.output_data, list):
+                    if len(thought.output_data) > 10:
+                        st.write(f"List with {len(thought.output_data)} items:")
+                        st.json(thought.output_data[:5])
+                        if len(thought.output_data) > 5:
+                            st.write(f"... and {len(thought.output_data) - 5} more items")
+                    else:
+                        st.json(thought.output_data)
+                else:
+                    st.json(thought.output_data)
+                
+                # Metadata section (if any)
+                if thought.metadata:
+                    st.markdown("**ℹ️ Additional Info:**")
+                    for key, value in thought.metadata.items():
+                        st.write(f"• **{key}**: {value}")
+                
+                # Add separator between steps
+                if i < len(st.session_state.agent_thoughts):
+                    st.markdown("---")
+        
+        # Summary
+        st.markdown("**📊 Summary:**")
+        st.write(f"• Total steps: {len(st.session_state.agent_thoughts)}")
+        st.write(f"• Processing time: {st.session_state.agent_thoughts[-1].timestamp - st.session_state.agent_thoughts[0].timestamp}")
+        
+        # Clear thoughts button
+        if st.button("🗑️ Clear Thinking History", key="clear_thoughts"):
+            clear_agent_thoughts()
+            st.rerun()
 
 
 def load_data() -> Tuple[List[Dict], List[Dict], str]:
@@ -143,11 +356,11 @@ def configure_gemini_api():
         Exception: For API configuration errors
     """
     try:
+        api_key = st.secrets["GEMINI_API_KEY"]
+        
         # Check if API key exists in secrets
         if "GEMINI_API_KEY" not in st.secrets:
             raise ValueError("GEMINI_API_KEY not found in Streamlit secrets. Please add it to your secrets.toml file.")
-        
-        api_key = st.secrets["GEMINI_API_KEY"] # Enter api key here
         
         # Validate API key is not empty
         if not api_key or api_key.strip() == "":
@@ -597,6 +810,195 @@ Provide a very concise, bullet-point summary answer based ONLY on the data provi
         return fallback_response
 
 
+def synthesize_results_with_citations(user_query: str, email_results: List[Dict], slack_results: List[Dict], 
+                                    document_result: str, model: genai.GenerativeModel) -> Dict:
+    """
+    Use Gemini to synthesize search results into a JSON response with inline citations
+    
+    Args:
+        user_query: The original user query
+        email_results: List of matching email dictionaries with source IDs
+        slack_results: List of matching Slack message dictionaries with source IDs
+        document_result: Document text if match found, with source ID tags
+        model: Configured Gemini GenerativeModel instance
+        
+    Returns:
+        Dictionary with 'answer' and 'sources' keys, or fallback response
+    """
+    if not model:
+        raise ValueError("Gemini model not provided")
+    
+    # Prepare tagged data for synthesis
+    email_data_str = ""
+    if email_results:
+        email_summaries = []
+        for email in email_results:
+            source_id = email.get('_source_id', 'unknown')
+            summary = f"[ID:{source_id}] From: {email.get('from', 'Unknown')}, Date: {email.get('date', 'Unknown')}, Subject: {email.get('subject', 'No subject')}, Body: {email.get('body', 'No content')[:300]}..."
+            email_summaries.append(summary)
+        email_data_str = "\n".join(email_summaries)
+    else:
+        email_data_str = "No relevant emails found."
+    
+    slack_data_str = ""
+    if slack_results:
+        slack_summaries = []
+        for msg in slack_results:
+            source_id = msg.get('_source_id', 'unknown')
+            summary = f"[ID:{source_id}] Channel: {msg.get('channel', 'Unknown')}, User: {msg.get('user', 'Unknown')}, Date: {msg.get('date', 'Unknown')}, Message: {msg.get('message', 'No content')[:300]}..."
+            slack_summaries.append(summary)
+        slack_data_str = "\n".join(slack_summaries)
+    else:
+        slack_data_str = "No relevant Slack messages found."
+    
+    document_data_str = ""
+    if document_result:
+        # Extract document ID if present
+        if "[DOCUMENT_ID:" in document_result:
+            doc_id = document_result.split("[DOCUMENT_ID:")[1].split("]")[0]
+            content = document_result.split("] ", 1)[1] if "] " in document_result else document_result
+        else:
+            doc_id = "unknown"
+            content = document_result
+        
+        # Truncate document for synthesis if too long
+        if len(content) > 1000:
+            document_data_str = f"[ID:{doc_id}] {content[:1000]}..."
+        else:
+            document_data_str = f"[ID:{doc_id}] {content}"
+    else:
+        document_data_str = "No relevant document content found."
+    
+    # Create enhanced synthesis prompt for JSON output with citations
+    prompt = f"""You are an AI assistant that provides accurate, well-sourced answers. Your task is to answer the user's query using ONLY the provided data sources.
+
+User's Query: "{user_query}"
+
+Available Data Sources:
+- EMAILS: {email_data_str}
+- SLACK MESSAGES: {slack_data_str}
+- DOCUMENT: {document_data_str}
+
+CRITICAL INSTRUCTIONS:
+1. You MUST respond with a valid JSON object in this exact format:
+   {{"answer": "your answer here with [1] [2] citations", "sources": [list of source objects]}}
+
+2. In your answer string, place numbered citations [1], [2], [3], etc. after ANY claim that comes from the provided data.
+
+3. For each citation [N], create a corresponding source object in the sources array with:
+   - "id": the source ID number (from [ID:X] in the data)
+   - "type": "email", "slack", or "document"
+   - "content_snippet": a brief excerpt showing the relevant content
+   - "metadata": additional details like sender, date, etc.
+
+4. Base your answer ONLY on the provided data. Do not make up information.
+
+5. If no relevant information is found, set answer to "No relevant information found in the provided data sources."
+
+Example format:
+{{"answer": "Project Phoenix received positive feedback [1] with some concerns about timeline [2].", "sources": [{{"id": 1, "type": "email", "content_snippet": "The technical approach looks solid", "metadata": {{"from": "sarah@company.com", "date": "2024-03-15"}}}}, {{"id": 3, "type": "slack", "content_snippet": "timeline seems aggressive", "metadata": {{"user": "alex", "channel": "project-phoenix"}}}}]}}
+
+Respond with ONLY the JSON object, no additional text."""
+
+    try:
+        # Make API call to Gemini for synthesis
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=2000,
+                temperature=0.3,
+                top_p=0.8
+            )
+        )
+        
+        if not response or not response.text:
+            raise Exception("Empty response from Gemini API")
+        
+        response_text = response.text.strip()
+        
+        # Clean up response text (remove markdown code blocks if present)
+        if response_text.startswith('```json'):
+            response_text = response_text.replace('```json', '').replace('```', '').strip()
+        elif response_text.startswith('```'):
+            response_text = response_text.replace('```', '').strip()
+        
+        # Parse JSON response
+        try:
+            parsed_response = json.loads(response_text)
+            
+            # Validate response structure
+            if not isinstance(parsed_response, dict):
+                raise ValueError("Response is not a JSON object")
+            
+            if "answer" not in parsed_response:
+                raise ValueError("Response missing 'answer' field")
+            
+            if "sources" not in parsed_response:
+                raise ValueError("Response missing 'sources' field")
+            
+            # Validate sources array
+            sources = parsed_response["sources"]
+            if not isinstance(sources, list):
+                raise ValueError("'sources' field is not a list")
+            
+            # Validate each source object
+            for i, source in enumerate(sources):
+                if not isinstance(source, dict):
+                    raise ValueError(f"Source {i} is not an object")
+                if "id" not in source:
+                    raise ValueError(f"Source {i} missing 'id' field")
+                if "type" not in source:
+                    raise ValueError(f"Source {i} missing 'type' field")
+            
+            return parsed_response
+            
+        except json.JSONDecodeError as e:
+            st.warning(f"Failed to parse JSON response: {e}")
+            # Fallback to plain text response
+            return {
+                "answer": response_text,
+                "sources": [],
+                "_fallback": True,
+                "_error": f"JSON parsing failed: {str(e)}"
+            }
+        
+    except Exception as e:
+        st.error(f"Error synthesizing results with citations: {e}")
+        
+        # Fallback: create a basic summary without AI synthesis
+        fallback_response = {
+            "answer": f"**Query:** {user_query}\n\n**Search Results:**\n",
+            "sources": [],
+            "_fallback": True,
+            "_error": str(e)
+        }
+        
+        if email_results:
+            fallback_response["answer"] += f"**Found {len(email_results)} relevant emails:**\n"
+            for i, email in enumerate(email_results[:3]):
+                fallback_response["answer"] += f"• Email from {email.get('from', 'Unknown')} ({email.get('date', 'Unknown')}): {email.get('subject', 'No subject')}\n"
+            if len(email_results) > 3:
+                fallback_response["answer"] += f"• ... and {len(email_results) - 3} more emails\n"
+            fallback_response["answer"] += "\n"
+        
+        if slack_results:
+            fallback_response["answer"] += f"**Found {len(slack_results)} relevant Slack messages:**\n"
+            for i, msg in enumerate(slack_results[:3]):
+                fallback_response["answer"] += f"• Message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')} ({msg.get('date', 'Unknown')})\n"
+            if len(slack_results) > 3:
+                fallback_response["answer"] += f"• ... and {len(slack_results) - 3} more messages\n"
+            fallback_response["answer"] += "\n"
+        
+        if document_result:
+            fallback_response["answer"] += "**Found relevant content in project documents**\n\n"
+        
+        if not email_results and not slack_results and not document_result:
+            fallback_response["answer"] += "**No relevant information found** in emails, Slack messages, or documents for this query.\n"
+        
+        st.warning("Using fallback response due to synthesis error.")
+        return fallback_response
+
+
 def validate_user_query(user_query: str) -> tuple[bool, str]:
     """
     Validate user input query for safety and usability
@@ -657,34 +1059,95 @@ def run_agent(user_query: str) -> str:
         
     Requirements: 1.3, 1.4, 1.5, 1.6 - Complete agent workflow with error handling
     """
+    # Clear previous thoughts and start fresh
+    clear_agent_thoughts()
+    
     # Enhanced input validation
     is_valid, validation_error = validate_user_query(user_query)
     if not is_valid:
+        add_agent_thought(
+            "Input Validation", 
+            user_query, 
+            f"❌ Input Error: {validation_error}",
+            {"validation_failed": True, "error_type": "input_validation"}
+        )
         return f"❌ Input Error: {validation_error}"
     
     try:
         # Step 1: Load data
         try:
             email_data, slack_data, document_text = load_data()
+            add_agent_thought(
+                "Data Loading",
+                "Loading emails.json, slack_messages.json, and project_notes.txt",
+                {
+                    "emails_loaded": len(email_data),
+                    "slack_messages_loaded": len(slack_data),
+                    "document_size": len(document_text)
+                },
+                {"step": 1, "status": "success"}
+            )
         except Exception as e:
+            add_agent_thought(
+                "Data Loading",
+                "Loading emails.json, slack_messages.json, and project_notes.txt",
+                f"Error loading data: {e}",
+                {"step": 1, "status": "error", "error_type": "data_loading"}
+            )
             return f"Error loading data: {e}. Please ensure all data files are present and properly formatted."
         
         # Step 2: Configure Gemini API
         try:
             model = configure_gemini_api()
+            add_agent_thought(
+                "API Configuration",
+                "Configuring Google Gemini API connection",
+                "API configured successfully",
+                {"step": 2, "status": "success", "model": "gemini-2.0-flash"}
+            )
         except Exception as e:
+            add_agent_thought(
+                "API Configuration",
+                "Configuring Google Gemini API connection",
+                f"Error configuring Gemini API: {e}",
+                {"step": 2, "status": "error", "error_type": "api_configuration"}
+            )
             return f"Error configuring Gemini API: {e}. Please check your API key configuration."
         
         # Step 3: Generate search terms using Gemini
         try:
             search_terms = generate_search_terms(user_query, model)
+            add_agent_thought(
+                "Query Analysis",
+                user_query,
+                search_terms,
+                {"step": 3, "status": "success", "method": "gemini_ai", "terms_count": len(search_terms)}
+            )
             if not search_terms:
+                add_agent_thought(
+                    "Query Analysis",
+                    user_query,
+                    "Unable to generate search terms from your query",
+                    {"step": 3, "status": "error", "error_type": "no_search_terms"}
+                )
                 return "Unable to generate search terms from your query. Please try rephrasing your question."
         except Exception as e:
             st.error(f"Search term generation failed: {e}")
             # Fallback: use original query words as search terms
             search_terms = [word.strip('.,!?') for word in user_query.split() if len(word) > 2][:3]
+            add_agent_thought(
+                "Query Analysis",
+                user_query,
+                search_terms,
+                {"step": 3, "status": "fallback", "method": "fallback_extraction", "error": str(e)}
+            )
             if not search_terms:
+                add_agent_thought(
+                    "Query Analysis",
+                    user_query,
+                    "Unable to process your query",
+                    {"step": 3, "status": "error", "error_type": "fallback_failed"}
+                )
                 return "Unable to process your query. Please try rephrasing your question."
         
         # Step 4: Execute multi-source search using generated terms
@@ -694,6 +1157,7 @@ def run_agent(user_query: str) -> str:
         
         try:
             # Search across all sources with each search term
+            search_details = []
             for term in search_terms:
                 # Search emails
                 email_matches = search_emails(term, email_data)
@@ -712,55 +1176,131 @@ def run_agent(user_query: str) -> str:
                     doc_match = search_documents(term, document_text)
                     if doc_match:
                         document_result = doc_match
+                
+                # Track search results for this term
+                search_details.append({
+                    "term": term,
+                    "email_matches": len(email_matches),
+                    "slack_matches": len(slack_matches),
+                    "document_match": bool(doc_match)
+                })
+            
+            # Step 4.5: Tag search results with unique IDs for source chain
+            tagged_emails, tagged_slack, tagged_document, source_mapping = tag_search_results_with_ids(
+                all_email_results, all_slack_results, document_result
+            )
+            
+            # Store source mapping in session state for UI display
+            st.session_state.source_mapping = source_mapping
+            
+            add_agent_thought(
+                "Multi-Source Search",
+                search_terms,
+                {
+                    "total_email_results": len(all_email_results),
+                    "total_slack_results": len(all_slack_results),
+                    "document_found": bool(document_result),
+                    "search_details": search_details,
+                    "sources_tagged": len(source_mapping)
+                },
+                {"step": 4, "status": "success", "sources_searched": 3}
+            )
                         
         except Exception as e:
             st.error(f"Search execution failed: {e}")
+            add_agent_thought(
+                "Multi-Source Search",
+                search_terms,
+                f"Error occurred while searching data sources: {e}",
+                {"step": 4, "status": "error", "error_type": "search_execution"}
+            )
             return f"Error occurred while searching data sources: {e}"
         
-        # Step 5: Synthesize results using Gemini
+        # Step 5: Synthesize results using Gemini with source chain
         try:
-            synthesized_response = synthesize_results(
+            synthesized_response = synthesize_results_with_citations(
                 user_query, 
-                all_email_results, 
-                all_slack_results, 
-                document_result, 
+                tagged_emails, 
+                tagged_slack, 
+                tagged_document, 
                 model
             )
+            add_agent_thought(
+                "Result Synthesis with Citations",
+                {
+                    "query": user_query,
+                    "email_results_count": len(tagged_emails),
+                    "slack_results_count": len(tagged_slack),
+                    "document_available": bool(tagged_document),
+                    "sources_mapped": len(source_mapping)
+                },
+                synthesized_response,
+                {"step": 5, "status": "success", "method": "gemini_ai_with_citations", "response_type": "json"}
+            )
+            
+            # Store the structured response in session state for UI display
+            st.session_state.final_response = synthesized_response
+            
             return synthesized_response
             
         except Exception as e:
             st.error(f"Result synthesis failed: {e}")
             
-            # Final fallback: return raw search results
-            fallback = f"**Search Results for:** {user_query}\n\n"
-            fallback += f"**Search Terms Used:** {', '.join(search_terms)}\n\n"
+            # Final fallback: return raw search results in structured format
+            fallback_response = {
+                "answer": f"**Search Results for:** {user_query}\n\n**Search Terms Used:** {', '.join(search_terms)}\n\n",
+                "sources": [],
+                "_fallback": True,
+                "_error": str(e)
+            }
             
             if all_email_results:
-                fallback += f"**Found {len(all_email_results)} relevant emails:**\n"
+                fallback_response["answer"] += f"**Found {len(all_email_results)} relevant emails:**\n"
                 for email in all_email_results[:3]:
-                    fallback += f"• {email.get('subject', 'No subject')} from {email.get('from', 'Unknown')}\n"
+                    fallback_response["answer"] += f"• {email.get('subject', 'No subject')} from {email.get('from', 'Unknown')}\n"
                 if len(all_email_results) > 3:
-                    fallback += f"• ... and {len(all_email_results) - 3} more\n"
-                fallback += "\n"
+                    fallback_response["answer"] += f"• ... and {len(all_email_results) - 3} more\n"
+                fallback_response["answer"] += "\n"
             
             if all_slack_results:
-                fallback += f"**Found {len(all_slack_results)} relevant Slack messages:**\n"
+                fallback_response["answer"] += f"**Found {len(all_slack_results)} relevant Slack messages:**\n"
                 for msg in all_slack_results[:3]:
-                    fallback += f"• Message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')}\n"
+                    fallback_response["answer"] += f"• Message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')}\n"
                 if len(all_slack_results) > 3:
-                    fallback += f"• ... and {len(all_slack_results) - 3} more\n"
-                fallback += "\n"
+                    fallback_response["answer"] += f"• ... and {len(all_slack_results) - 3} more\n"
+                fallback_response["answer"] += "\n"
             
             if document_result:
-                fallback += "**Found relevant content in project documents**\n\n"
+                fallback_response["answer"] += "**Found relevant content in project documents**\n\n"
             
             if not all_email_results and not all_slack_results and not document_result:
-                fallback += "**No relevant information found** for your query.\n"
+                fallback_response["answer"] += "**No relevant information found** for your query.\n"
             
-            return fallback
+            add_agent_thought(
+                "Result Synthesis with Citations",
+                {
+                    "query": user_query,
+                    "email_results_count": len(all_email_results),
+                    "slack_results_count": len(all_slack_results),
+                    "document_available": bool(document_result)
+                },
+                fallback_response,
+                {"step": 5, "status": "fallback", "method": "fallback_summary", "error": str(e)}
+            )
+            
+            # Store fallback response in session state
+            st.session_state.final_response = fallback_response
+            
+            return fallback_response
             
     except Exception as e:
         st.error(f"Unexpected error in agent workflow: {e}")
+        add_agent_thought(
+            "Unexpected Error",
+            user_query,
+            f"An unexpected error occurred: {e}",
+            {"step": "error", "status": "error", "error_type": "unexpected_error"}
+        )
         return f"An unexpected error occurred: {e}. Please try again or contact support."
 
 
@@ -833,6 +1373,9 @@ def main():
                     st.success("✅ Search completed!")
                     st.write("### Results")
                     st.write(result)
+                    
+                    # Show the agent's thinking process
+                    show_agent_thinking()
                     
                 except Exception as e:
                     # Add error display for failed operations
@@ -962,6 +1505,148 @@ def main():
             
             for status in files_status:
                 st.write(status)
+
+
+def main():
+    """Main Streamlit application entry point with comprehensive error handling"""
+    try:
+        # Task 6.1: Create main UI components
+        st.title("Synthetic Memory Lite")
+        st.markdown("*AI-powered information retrieval from your personal data*")
+        
+        # Add system status check at startup
+        startup_errors = []
+        
+        # Check data files availability
+        required_files = ["emails.json", "slack_messages.json", "project_notes.txt"]
+        missing_files = []
+        for file in required_files:
+            if not os.path.exists(file):
+                missing_files.append(file)
+        
+        if missing_files:
+            startup_errors.append(f"Missing data files: {', '.join(missing_files)}")
+        
+        # Check API key availability
+        if "GEMINI_API_KEY" not in st.secrets or not st.secrets["GEMINI_API_KEY"].strip():
+            startup_errors.append("GEMINI_API_KEY not configured in Streamlit secrets")
+        
+        # Display startup errors if any
+        if startup_errors:
+            st.error("⚠️ **System Configuration Issues:**")
+            for error in startup_errors:
+                st.write(f"• {error}")
+            st.write("Please resolve these issues before using the application.")
+            st.stop()
+        
+        # Create text input field for user queries with pre-populated demo query
+        user_query = st.text_input(
+            "Enter your context or question:", 
+            value="What was the feedback on Project Phoenix?",
+            help="Ask questions about your emails, Slack messages, and documents. Keep queries clear and specific.",
+            max_chars=500
+        )
+        
+        # Show character count for user awareness
+        if user_query:
+            char_count = len(user_query)
+            if char_count > 400:
+                st.warning(f"Query length: {char_count}/500 characters")
+            elif char_count > 0:
+                st.caption(f"Query length: {char_count}/500 characters")
+        
+        # Add "Find Context" button to trigger agent workflow
+        if st.button("Find Context", type="primary"):
+            # Enhanced input validation
+            is_valid, validation_error = validate_user_query(user_query)
+            
+            if not is_valid:
+                st.error(f"❌ {validation_error}")
+                return
+            
+            # Task 6.2: Implement user interaction flow
+            # Add button click handler to execute run_agent() function
+            # Implement st.spinner() with "Thinking..." message during processing
+            with st.spinner("🤖 Analyzing your query and searching through your data..."):
+                try:
+                    # Execute the agent workflow
+                    result = run_agent(user_query)
+                    
+                    # Display agent results using the new source chain feature
+                    st.success("✅ Search completed!")
+                    
+                    # Check if we have a structured response with citations
+                    if (hasattr(st.session_state, 'final_response') and 
+                        isinstance(st.session_state.final_response, dict)):
+                        
+                        # Use the new source chain display
+                        source_mapping = getattr(st.session_state, 'source_mapping', {})
+                        display_answer_with_sources(st.session_state.final_response, source_mapping)
+                        
+                        # Show fallback warning if needed
+                        if st.session_state.final_response.get('_fallback'):
+                            st.warning("⚠️ This response was generated using fallback processing due to an error.")
+                            if '_error' in st.session_state.final_response:
+                                with st.expander("Error Details", expanded=False):
+                                    st.code(st.session_state.final_response['_error'])
+                    
+                    else:
+                        # Fallback to old display method for backward compatibility
+                        st.write("### Results")
+                        st.write(result)
+                    
+                    # Show the agent's thinking process
+                    show_agent_thinking()
+                    
+                except Exception as e:
+                    # Add error display for failed operations
+                    st.error(f"❌ An error occurred while processing your query: {str(e)}")
+                    st.write("**Troubleshooting suggestions:**")
+                    st.write("• Check your internet connection")
+                    st.write("• Verify your Gemini API key is valid")
+                    st.write("• Try rephrasing your query")
+                    st.write("• Check that all data files are present and properly formatted")
+                    
+                    # Offer to show debug information
+                    if st.button("Show Debug Information"):
+                        st.write("**Error Details:**")
+                        st.code(str(e))
+        
+        # Add helpful information section
+        with st.expander("ℹ️ How to use Synthetic Memory Lite", expanded=False):
+            st.write("""
+            **What it does:**
+            - Searches through your emails, Slack messages, and documents
+            - Uses AI to understand your questions and find relevant information
+            - Provides answers with clear source attribution and inline citations
+            
+            **Example queries:**
+            - "What was the feedback on Project Phoenix?"
+            - "Who mentioned the budget concerns?"
+            - "What are the key points from the project notes?"
+            - "Any messages about the deadline?"
+            
+            **Tips for better results:**
+            - Be specific about what you're looking for
+            - Use key terms that might appear in your data
+            - Ask about specific people, projects, or topics
+            
+            **New Features:**
+            - **Inline Citations**: Numbers like ¹ ² ³ in answers link to original sources
+            - **Source Verification**: Click on source sections to see full original data
+            - **Agent Thinking**: See how the AI processes your query step by step
+            """)
+        
+    except Exception as e:
+        st.error(f"❌ **Application Error:** {str(e)}")
+        st.write("The application encountered an unexpected error during startup.")
+        st.write("Please check your configuration and try refreshing the page.")
+        
+        # Show debug info for developers
+        if st.checkbox("Show technical details"):
+            st.code(f"Error: {str(e)}\nType: {type(e).__name__}")
+            import traceback
+            st.code(traceback.format_exc())
 
 
 if __name__ == "__main__":
