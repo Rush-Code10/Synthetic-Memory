@@ -1,62 +1,74 @@
 [
   {
-    "channel": "#project-phoenix",
+    "channel": "project-phoenix",
     "user": "sarah_chen",
-    "date": "2024-03-13",
-    "message": "Just finished reviewing the Phoenix proposal. Really solid work! 👏 My only concern is we might be rushing the user testing phase. Thoughts?"
+    "date": "2024-03-15 09:30",
+    "message": "Just finished reviewing the Project Phoenix docs. Overall impressed but have concerns about the timeline. Are we being too ambitious with the Q2 launch?"
   },
   {
-    "channel": "#project-phoenix",
+    "channel": "project-phoenix",
     "user": "mike_rodriguez",
-    "date": "2024-03-13",
-    "message": "@sarah_chen agreed on the user testing. Also, can we talk about the budget? We're cutting it close for Q2."
+    "date": "2024-03-15 09:45",
+    "message": "Agree with Sarah on timeline concerns. The infrastructure requirements are more complex than initially scoped. We might need an extra 4-6 weeks."
   },
   {
-    "channel": "#project-phoenix",
+    "channel": "project-phoenix",
     "user": "alex_kim",
-    "date": "2024-03-14",
-    "message": "Working on the technical review now. The microservices approach looks good but I have some database concerns. Will send detailed feedback tomorrow."
+    "date": "2024-03-15 10:15",
+    "message": "From a technical perspective, the architecture is solid. Main concern is the data processing pipeline - we need to plan for scale from day one."
   },
   {
-    "channel": "#general",
-    "user": "lisa_wong",
-    "date": "2024-03-16",
-    "message": "Super excited about Project Phoenix! The market research is showing amazing potential. We could really disrupt the space with this."
+    "channel": "general",
+    "user": "jennifer_wong",
+    "date": "2024-03-16 14:20",
+    "message": "Stakeholders are really excited about Project Phoenix! They see it as a potential game-changer for our market position."
   },
   {
-    "channel": "#project-phoenix",
+    "channel": "project-phoenix",
     "user": "david_thompson",
-    "date": "2024-03-17",
-    "message": "Team, I need everyone's final feedback by Friday. We need to make the go/no-go decision next week."
+    "date": "2024-03-17 11:00",
+    "message": "Risk assessment is complete. Three main areas of concern but all manageable with proper planning. The project is definitely worth pursuing."
   },
   {
-    "channel": "#project-phoenix",
-    "user": "alex_kim",
-    "date": "2024-03-18",
-    "message": "Technical review is done. Overall positive but we need to address the database scaling strategy. Details in my email."
+    "channel": "project-phoenix",
+    "user": "lisa_patel",
+    "date": "2024-03-17 15:30",
+    "message": "Marketing team is on board! Customer research shows strong demand for these features. We just need to nail the user experience."
   },
   {
-    "channel": "#project-phoenix",
+    "channel": "budget-planning",
+    "user": "mike_rodriguez",
+    "date": "2024-03-18 08:45",
+    "message": "Updated budget projections for Project Phoenix. Infrastructure costs are higher than expected but ROI still looks strong."
+  },
+  {
+    "channel": "project-phoenix",
     "user": "sarah_chen",
-    "date": "2024-03-19",
-    "message": "What if we do a phased rollout? Core features first, then UX improvements in the next quarter?"
+    "date": "2024-03-18 16:20",
+    "message": "Team meeting tomorrow at 2 PM to discuss all the feedback we've received. Let's align on next steps and revised timeline."
   },
   {
-    "channel": "#project-phoenix",
-    "user": "mike_rodriguez",
-    "date": "2024-03-19",
-    "message": "@sarah_chen that could work for the budget! Let's discuss in tomorrow's meeting."
+    "channel": "engineering",
+    "user": "alex_kim",
+    "date": "2024-03-19 10:30",
+    "message": "Working on the technical specifications for Project Phoenix. The microservices approach will give us the flexibility we need."
   },
   {
-    "channel": "#announcements",
+    "channel": "project-phoenix",
+    "user": "jennifer_wong",
+    "date": "2024-03-19 13:45",
+    "message": "Executive team wants the detailed roadmap by month-end. They're willing to approve additional budget if we can show clear milestones."
+  },
+  {
+    "channel": "project-phoenix",
     "user": "david_thompson",
-    "date": "2024-03-23",
-    "message": "🎉 Exciting news! Project Phoenix has been approved! Thanks to everyone for the thorough review process. Kickoff meeting scheduled for next Monday."
+    "date": "2024-03-20 09:15",
+    "message": "Contingency planning is in place for the identified risks. We're as prepared as we can be for the challenges ahead."
   },
   {
-    "channel": "#project-phoenix",
-    "user": "lisa_wong",
-    "date": "2024-03-23",
-    "message": "YES! 🚀 Can't wait to start the marketing campaign. This is going to be huge!"
+    "channel": "general",
+    "user": "lisa_patel",
+    "date": "2024-03-20 11:30",
+    "message": "Customer interviews for Project Phoenix are showing 85% positive interest rate. This is going to be huge!"
   }
 ]

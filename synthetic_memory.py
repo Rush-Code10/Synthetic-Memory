@@ -147,7 +147,7 @@ def configure_gemini_api():
         if "GEMINI_API_KEY" not in st.secrets:
             raise ValueError("GEMINI_API_KEY not found in Streamlit secrets. Please add it to your secrets.toml file.")
         
-        api_key = st.secrets["GEMINI_API_KEY"]
+        api_key = st.secrets["GEMINI_API_KEY"] # Enter api key here
         
         # Validate API key is not empty
         if not api_key or api_key.strip() == "":
@@ -161,9 +161,9 @@ def configure_gemini_api():
         # Configure the Gemini API with timeout and retry settings
         genai.configure(api_key=api_key_stripped)
         
-        # Initialize the GenerativeModel with 'gemini-pro'
+        # Initialize the GenerativeModel with 'gemini-1.5-flash' (free tier)
         try:
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-2.0-flash')
         except Exception as e:
             raise Exception(f"Failed to initialize Gemini model: {str(e)}")
         
