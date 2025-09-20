@@ -301,6 +301,325 @@ def search_documents(query: str, document_text: str) -> str:
         return ""
 
 
+def generate_search_terms(user_query: str, model: genai.GenerativeModel) -> List[str]:
+    """
+    Use Gemini to generate relevant search terms from a user query
+    
+    Args:
+        user_query: The user's natural language query
+        model: Configured Gemini GenerativeModel instance
+        
+    Returns:
+        List of search terms extracted from the query
+        
+    Requirements: 2.1, 5.1 - Generate appropriate search terms using Gemini AI
+    """
+    if not user_query or not isinstance(user_query, str):
+        return []
+    
+    if not model:
+        raise ValueError("Gemini model not provided")
+    
+    # Create the prompt for search term generation
+    prompt = f"""Your role is to analyze a user's query and determine the best keywords to search for in a database of emails, chat messages, and documents.
+
+User Query: "{user_query}"
+
+Please generate a simple JSON object containing a list of the most relevant and specific search strings. Only respond with the JSON, nothing else.
+
+Format: {{ "search_terms": ["term1", "term2", "term3"] }}"""
+
+    try:
+        # Make API call to Gemini
+        response = model.generate_content(prompt)
+        
+        if not response or not response.text:
+            raise Exception("Empty response from Gemini API")
+        
+        response_text = response.text.strip()
+        
+        # Parse JSON response
+        try:
+            parsed_response = json.loads(response_text)
+            
+            # Validate response structure
+            if not isinstance(parsed_response, dict):
+                raise ValueError("Response is not a JSON object")
+            
+            if "search_terms" not in parsed_response:
+                raise ValueError("Response missing 'search_terms' field")
+            
+            search_terms = parsed_response["search_terms"]
+            
+            if not isinstance(search_terms, list):
+                raise ValueError("'search_terms' field is not a list")
+            
+            # Filter and validate search terms
+            valid_terms = []
+            for term in search_terms:
+                if isinstance(term, str) and term.strip():
+                    valid_terms.append(term.strip())
+            
+            return valid_terms
+            
+        except json.JSONDecodeError as e:
+            # Try to extract search terms from malformed JSON
+            st.warning(f"JSON parsing failed: {e}. Attempting fallback extraction.")
+            
+            # Fallback: try to extract terms from response text
+            fallback_terms = []
+            lines = response_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('{') and not line.startswith('}'):
+                    # Remove quotes and common JSON artifacts
+                    clean_line = line.replace('"', '').replace(',', '').replace('[', '').replace(']', '')
+                    if clean_line and len(clean_line) > 1:
+                        fallback_terms.append(clean_line)
+            
+            if fallback_terms:
+                return fallback_terms[:5]  # Limit to 5 terms
+            else:
+                # Ultimate fallback: extract key words from original query
+                words = user_query.split()
+                return [word.strip('.,!?') for word in words if len(word) > 2][:3]
+        
+    except Exception as e:
+        st.error(f"Error generating search terms: {e}")
+        # Fallback: extract key words from original query
+        words = user_query.split()
+        fallback_terms = [word.strip('.,!?') for word in words if len(word) > 2][:3]
+        st.warning(f"Using fallback search terms: {fallback_terms}")
+        return fallback_terms
+
+
+def synthesize_results(user_query: str, email_results: List[Dict], slack_results: List[Dict], 
+                      document_result: str, model: genai.GenerativeModel) -> str:
+    """
+    Use Gemini to synthesize search results into a coherent response with source attribution
+    
+    Args:
+        user_query: The original user query
+        email_results: List of matching email dictionaries
+        slack_results: List of matching Slack message dictionaries  
+        document_result: Document text if match found, empty string if not
+        model: Configured Gemini GenerativeModel instance
+        
+    Returns:
+        Synthesized response with proper source attribution
+        
+    Requirements: 2.5, 2.6, 5.6 - Synthesize results with source attribution, no hallucination
+    """
+    if not model:
+        raise ValueError("Gemini model not provided")
+    
+    # Prepare data for synthesis
+    email_data_str = ""
+    if email_results:
+        email_summaries = []
+        for email in email_results:
+            summary = f"From: {email.get('from', 'Unknown')}, Date: {email.get('date', 'Unknown')}, Subject: {email.get('subject', 'No subject')}, Body: {email.get('body', 'No content')[:200]}..."
+            email_summaries.append(summary)
+        email_data_str = "\n".join(email_summaries)
+    else:
+        email_data_str = "No relevant emails found."
+    
+    slack_data_str = ""
+    if slack_results:
+        slack_summaries = []
+        for msg in slack_results:
+            summary = f"Channel: {msg.get('channel', 'Unknown')}, User: {msg.get('user', 'Unknown')}, Date: {msg.get('date', 'Unknown')}, Message: {msg.get('message', 'No content')[:200]}..."
+            slack_summaries.append(summary)
+        slack_data_str = "\n".join(slack_summaries)
+    else:
+        slack_data_str = "No relevant Slack messages found."
+    
+    document_data_str = ""
+    if document_result:
+        # Truncate document for synthesis if too long
+        if len(document_result) > 1000:
+            document_data_str = document_result[:1000] + "..."
+        else:
+            document_data_str = document_result
+    else:
+        document_data_str = "No relevant document content found."
+    
+    # Create synthesis prompt
+    prompt = f"""Act as a helpful AI assistant. Synthesize the following information from the user's personal data to directly answer their query.
+
+User's Query: "{user_query}"
+
+Data to synthesize:
+- EMAILS: {email_data_str}
+- SLACK MESSAGES: {slack_data_str}
+- DOCUMENT: {document_data_str}
+
+Provide a very concise, bullet-point summary answer based ONLY on the data provided. Then, clearly list the sources (e.g., "Email from Sarah Chen: March 12"). Do not make anything up."""
+
+    try:
+        # Make API call to Gemini for synthesis
+        response = model.generate_content(prompt)
+        
+        if not response or not response.text:
+            raise Exception("Empty response from Gemini API")
+        
+        synthesized_response = response.text.strip()
+        
+        # Validate that we got a meaningful response
+        if len(synthesized_response) < 10:
+            raise Exception("Response too short, likely incomplete")
+        
+        return synthesized_response
+        
+    except Exception as e:
+        st.error(f"Error synthesizing results: {e}")
+        
+        # Fallback: create a basic summary without AI synthesis
+        fallback_response = f"**Query:** {user_query}\n\n"
+        
+        if email_results:
+            fallback_response += f"**Emails Found ({len(email_results)}):**\n"
+            for i, email in enumerate(email_results[:3]):  # Show max 3
+                fallback_response += f"• Email from {email.get('from', 'Unknown')} ({email.get('date', 'Unknown')}): {email.get('subject', 'No subject')}\n"
+            if len(email_results) > 3:
+                fallback_response += f"• ... and {len(email_results) - 3} more emails\n"
+            fallback_response += "\n"
+        
+        if slack_results:
+            fallback_response += f"**Slack Messages Found ({len(slack_results)}):**\n"
+            for i, msg in enumerate(slack_results[:3]):  # Show max 3
+                fallback_response += f"• Message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')} ({msg.get('date', 'Unknown')})\n"
+            if len(slack_results) > 3:
+                fallback_response += f"• ... and {len(slack_results) - 3} more messages\n"
+            fallback_response += "\n"
+        
+        if document_result:
+            fallback_response += "**Document:** Relevant content found in project notes\n\n"
+        
+        if not email_results and not slack_results and not document_result:
+            fallback_response += "**No relevant information found** in emails, Slack messages, or documents for this query.\n"
+        
+        st.warning("Using fallback response due to synthesis error.")
+        return fallback_response
+
+
+def run_agent(user_query: str) -> str:
+    """
+    Execute the complete agentic workflow: search term generation → multi-source search → result synthesis
+    
+    Args:
+        user_query: The user's natural language query
+        
+    Returns:
+        Final synthesized response with source attribution
+        
+    Requirements: 1.3, 1.4, 1.5, 1.6 - Complete agent workflow with error handling
+    """
+    if not user_query or not isinstance(user_query, str) or not user_query.strip():
+        return "Please provide a valid query to search for."
+    
+    try:
+        # Step 1: Load data
+        try:
+            email_data, slack_data, document_text = load_data()
+        except Exception as e:
+            return f"Error loading data: {e}. Please ensure all data files are present and properly formatted."
+        
+        # Step 2: Configure Gemini API
+        try:
+            model = configure_gemini_api()
+        except Exception as e:
+            return f"Error configuring Gemini API: {e}. Please check your API key configuration."
+        
+        # Step 3: Generate search terms using Gemini
+        try:
+            search_terms = generate_search_terms(user_query, model)
+            if not search_terms:
+                return "Unable to generate search terms from your query. Please try rephrasing your question."
+        except Exception as e:
+            st.error(f"Search term generation failed: {e}")
+            # Fallback: use original query words as search terms
+            search_terms = [word.strip('.,!?') for word in user_query.split() if len(word) > 2][:3]
+            if not search_terms:
+                return "Unable to process your query. Please try rephrasing your question."
+        
+        # Step 4: Execute multi-source search using generated terms
+        all_email_results = []
+        all_slack_results = []
+        document_result = ""
+        
+        try:
+            # Search across all sources with each search term
+            for term in search_terms:
+                # Search emails
+                email_matches = search_emails(term, email_data)
+                for email in email_matches:
+                    if email not in all_email_results:  # Avoid duplicates
+                        all_email_results.append(email)
+                
+                # Search Slack messages
+                slack_matches = search_slack(term, slack_data)
+                for msg in slack_matches:
+                    if msg not in all_slack_results:  # Avoid duplicates
+                        all_slack_results.append(msg)
+                
+                # Search documents (if any term matches, we get the full document)
+                if not document_result:  # Only search if we haven't found a match yet
+                    doc_match = search_documents(term, document_text)
+                    if doc_match:
+                        document_result = doc_match
+                        
+        except Exception as e:
+            st.error(f"Search execution failed: {e}")
+            return f"Error occurred while searching data sources: {e}"
+        
+        # Step 5: Synthesize results using Gemini
+        try:
+            synthesized_response = synthesize_results(
+                user_query, 
+                all_email_results, 
+                all_slack_results, 
+                document_result, 
+                model
+            )
+            return synthesized_response
+            
+        except Exception as e:
+            st.error(f"Result synthesis failed: {e}")
+            
+            # Final fallback: return raw search results
+            fallback = f"**Search Results for:** {user_query}\n\n"
+            fallback += f"**Search Terms Used:** {', '.join(search_terms)}\n\n"
+            
+            if all_email_results:
+                fallback += f"**Found {len(all_email_results)} relevant emails:**\n"
+                for email in all_email_results[:3]:
+                    fallback += f"• {email.get('subject', 'No subject')} from {email.get('from', 'Unknown')}\n"
+                if len(all_email_results) > 3:
+                    fallback += f"• ... and {len(all_email_results) - 3} more\n"
+                fallback += "\n"
+            
+            if all_slack_results:
+                fallback += f"**Found {len(all_slack_results)} relevant Slack messages:**\n"
+                for msg in all_slack_results[:3]:
+                    fallback += f"• Message from {msg.get('user', 'Unknown')} in #{msg.get('channel', 'Unknown')}\n"
+                if len(all_slack_results) > 3:
+                    fallback += f"• ... and {len(all_slack_results) - 3} more\n"
+                fallback += "\n"
+            
+            if document_result:
+                fallback += "**Found relevant content in project documents**\n\n"
+            
+            if not all_email_results and not all_slack_results and not document_result:
+                fallback += "**No relevant information found** for your query.\n"
+            
+            return fallback
+            
+    except Exception as e:
+        st.error(f"Unexpected error in agent workflow: {e}")
+        return f"An unexpected error occurred: {e}. Please try again or contact support."
+
+
 def main():
     """Main Streamlit application entry point"""
     st.title("Synthetic Memory Lite")
