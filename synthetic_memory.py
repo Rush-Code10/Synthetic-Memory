@@ -153,30 +153,78 @@ def configure_gemini_api():
         if not api_key or api_key.strip() == "":
             raise ValueError("GEMINI_API_KEY is empty in Streamlit secrets")
         
-        # Configure the Gemini API
-        genai.configure(api_key=api_key)
+        # Basic API key format validation (Google API keys typically start with 'AIza')
+        api_key_stripped = api_key.strip()
+        if len(api_key_stripped) < 20:
+            raise ValueError("GEMINI_API_KEY appears to be too short to be valid")
+        
+        # Configure the Gemini API with timeout and retry settings
+        genai.configure(api_key=api_key_stripped)
         
         # Initialize the GenerativeModel with 'gemini-pro'
-        model = genai.GenerativeModel('gemini-pro')
-        
-        # Test the configuration with a simple call
         try:
+            model = genai.GenerativeModel('gemini-pro')
+        except Exception as e:
+            raise Exception(f"Failed to initialize Gemini model: {str(e)}")
+        
+        # Test the configuration with a minimal call (with timeout handling)
+        try:
+            import time
+            start_time = time.time()
+            
             # Make a minimal test call to verify the API is working
-            test_response = model.generate_content("Hello")
+            test_response = model.generate_content("Test", 
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=10,
+                    temperature=0.1
+                ))
+            
+            elapsed_time = time.time() - start_time
+            
             if not test_response:
                 raise Exception("API test call returned empty response")
+            
+            if not test_response.text:
+                raise Exception("API test call returned response without text content")
+            
+            # Log successful connection (for debugging)
+            if elapsed_time > 5:
+                st.warning(f"API response was slow ({elapsed_time:.1f}s). This may affect performance.")
+                
         except Exception as e:
-            raise Exception(f"API configuration test failed: {str(e)}")
+            error_msg = str(e).lower()
+            if "api key" in error_msg or "authentication" in error_msg or "permission" in error_msg:
+                raise Exception(f"API authentication failed: Invalid API key or insufficient permissions")
+            elif "quota" in error_msg or "limit" in error_msg:
+                raise Exception(f"API quota exceeded: {str(e)}")
+            elif "network" in error_msg or "connection" in error_msg or "timeout" in error_msg:
+                raise Exception(f"Network connectivity issue: {str(e)}")
+            else:
+                raise Exception(f"API configuration test failed: {str(e)}")
         
         return model
         
     except ValueError as e:
-        st.error(f"API Key Error: {e}")
-        st.info("Please ensure GEMINI_API_KEY is properly set in your Streamlit secrets configuration.")
+        st.error(f"🔑 API Key Error: {e}")
+        st.info("**Configuration Help:**")
+        st.write("1. Create a `.streamlit/secrets.toml` file in your project")
+        st.write("2. Add your Gemini API key: `GEMINI_API_KEY = \"your-api-key-here\"`")
+        st.write("3. Get an API key from: https://makersuite.google.com/app/apikey")
         raise
     except Exception as e:
-        st.error(f"Gemini API Configuration Error: {e}")
-        st.info("Please check your API key and internet connection.")
+        st.error(f"🤖 Gemini API Configuration Error: {e}")
+        
+        # Provide specific troubleshooting based on error type
+        error_msg = str(e).lower()
+        if "authentication" in error_msg or "api key" in error_msg:
+            st.info("**API Key Issue:** Please verify your Gemini API key is correct and active.")
+        elif "quota" in error_msg or "limit" in error_msg:
+            st.info("**Quota Issue:** You may have exceeded your API usage limits. Check your Google Cloud console.")
+        elif "network" in error_msg or "connection" in error_msg:
+            st.info("**Network Issue:** Please check your internet connection and try again.")
+        else:
+            st.info("**General Issue:** Please check your API key and internet connection.")
+        
         raise
 
 
@@ -320,23 +368,39 @@ def generate_search_terms(user_query: str, model: genai.GenerativeModel) -> List
     if not model:
         raise ValueError("Gemini model not provided")
     
-    # Create the prompt for search term generation
+    # Create the prompt for search term generation with better constraints
     prompt = f"""Your role is to analyze a user's query and determine the best keywords to search for in a database of emails, chat messages, and documents.
 
 User Query: "{user_query}"
 
-Please generate a simple JSON object containing a list of the most relevant and specific search strings. Only respond with the JSON, nothing else.
+Please generate a simple JSON object containing a list of the most relevant and specific search strings. Focus on key terms, names, and concepts. Limit to 5 terms maximum. Only respond with the JSON, nothing else.
 
 Format: {{ "search_terms": ["term1", "term2", "term3"] }}"""
 
     try:
-        # Make API call to Gemini
-        response = model.generate_content(prompt)
+        # Make API call to Gemini with generation config for better reliability
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=200,
+                temperature=0.3,
+                top_p=0.8
+            )
+        )
         
-        if not response or not response.text:
-            raise Exception("Empty response from Gemini API")
+        if not response:
+            raise Exception("No response received from Gemini API")
+        
+        if not response.text:
+            raise Exception("Empty response text from Gemini API")
         
         response_text = response.text.strip()
+        
+        # Clean up response text (remove markdown code blocks if present)
+        if response_text.startswith('```json'):
+            response_text = response_text.replace('```json', '').replace('```', '').strip()
+        elif response_text.startswith('```'):
+            response_text = response_text.replace('```', '').strip()
         
         # Parse JSON response
         try:
@@ -358,24 +422,42 @@ Format: {{ "search_terms": ["term1", "term2", "term3"] }}"""
             valid_terms = []
             for term in search_terms:
                 if isinstance(term, str) and term.strip():
-                    valid_terms.append(term.strip())
+                    clean_term = term.strip()
+                    # Skip very short terms or common words
+                    if len(clean_term) > 1 and clean_term.lower() not in ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']:
+                        valid_terms.append(clean_term)
             
-            return valid_terms
+            # Limit to maximum 5 terms
+            return valid_terms[:5]
             
         except json.JSONDecodeError as e:
-            # Try to extract search terms from malformed JSON
-            st.warning(f"JSON parsing failed: {e}. Attempting fallback extraction.")
+            # Enhanced fallback extraction
+            st.warning(f"JSON parsing failed: {e}. Attempting intelligent fallback extraction.")
             
-            # Fallback: try to extract terms from response text
+            # Try to extract terms from response text using multiple strategies
             fallback_terms = []
-            lines = response_text.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line and not line.startswith('{') and not line.startswith('}'):
-                    # Remove quotes and common JSON artifacts
-                    clean_line = line.replace('"', '').replace(',', '').replace('[', '').replace(']', '')
-                    if clean_line and len(clean_line) > 1:
-                        fallback_terms.append(clean_line)
+            
+            # Strategy 1: Look for quoted terms
+            import re
+            quoted_terms = re.findall(r'"([^"]+)"', response_text)
+            for term in quoted_terms:
+                if len(term) > 1 and term not in fallback_terms:
+                    fallback_terms.append(term)
+            
+            # Strategy 2: Look for terms in brackets
+            bracket_terms = re.findall(r'\[([^\]]+)\]', response_text)
+            for term in bracket_terms:
+                clean_term = term.replace('"', '').replace("'", '').strip()
+                if len(clean_term) > 1 and clean_term not in fallback_terms:
+                    fallback_terms.append(clean_term)
+            
+            # Strategy 3: Extract meaningful words from response
+            if not fallback_terms:
+                words = response_text.replace('"', '').replace('[', '').replace(']', '').replace('{', '').replace('}', '').split()
+                for word in words:
+                    clean_word = word.strip('.,!?:;')
+                    if len(clean_word) > 2 and clean_word.lower() not in ['search', 'terms', 'query', 'user', 'the', 'and', 'for']:
+                        fallback_terms.append(clean_word)
             
             if fallback_terms:
                 return fallback_terms[:5]  # Limit to 5 terms
@@ -385,12 +467,24 @@ Format: {{ "search_terms": ["term1", "term2", "term3"] }}"""
                 return [word.strip('.,!?') for word in words if len(word) > 2][:3]
         
     except Exception as e:
-        st.error(f"Error generating search terms: {e}")
-        # Fallback: extract key words from original query
+        error_msg = str(e).lower()
+        if "quota" in error_msg or "limit" in error_msg:
+            st.error(f"API quota exceeded while generating search terms: {e}")
+        elif "network" in error_msg or "connection" in error_msg:
+            st.error(f"Network error while generating search terms: {e}")
+        else:
+            st.error(f"Error generating search terms: {e}")
+        
+        # Enhanced fallback: extract key words from original query
         words = user_query.split()
         fallback_terms = [word.strip('.,!?') for word in words if len(word) > 2][:3]
-        st.warning(f"Using fallback search terms: {fallback_terms}")
-        return fallback_terms
+        
+        if fallback_terms:
+            st.info(f"Using fallback search terms extracted from your query: {', '.join(fallback_terms)}")
+            return fallback_terms
+        else:
+            # Last resort: use the entire query as a single search term
+            return [user_query.strip()]
 
 
 def synthesize_results(user_query: str, email_results: List[Dict], slack_results: List[Dict], 
@@ -503,6 +597,54 @@ Provide a very concise, bullet-point summary answer based ONLY on the data provi
         return fallback_response
 
 
+def validate_user_query(user_query: str) -> tuple[bool, str]:
+    """
+    Validate user input query for safety and usability
+    
+    Args:
+        user_query: The user's input query
+        
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if not user_query:
+        return False, "Please provide a query to search for."
+    
+    if not isinstance(user_query, str):
+        return False, "Query must be text."
+    
+    # Strip whitespace and check if empty
+    query_stripped = user_query.strip()
+    if not query_stripped:
+        return False, "Please provide a non-empty query."
+    
+    # Check minimum length
+    if len(query_stripped) < 2:
+        return False, "Query is too short. Please provide at least 2 characters."
+    
+    # Check maximum length to prevent abuse
+    if len(query_stripped) > 500:
+        return False, "Query is too long. Please limit to 500 characters or less."
+    
+    # Check for potentially problematic characters or patterns
+    suspicious_patterns = ['<script', 'javascript:', 'eval(', 'exec(']
+    query_lower = query_stripped.lower()
+    for pattern in suspicious_patterns:
+        if pattern in query_lower:
+            return False, "Query contains potentially unsafe content. Please rephrase your question."
+    
+    # Check if query is just special characters or numbers
+    if query_stripped.replace(' ', '').replace('.', '').replace('?', '').replace('!', '').isdigit():
+        return False, "Please provide a descriptive question rather than just numbers."
+    
+    # Check for excessive repetition (same character repeated many times)
+    for char in query_stripped:
+        if query_stripped.count(char) > len(query_stripped) * 0.7:  # More than 70% same character
+            return False, "Query appears to contain excessive repetition. Please provide a clear question."
+    
+    return True, ""
+
+
 def run_agent(user_query: str) -> str:
     """
     Execute the complete agentic workflow: search term generation → multi-source search → result synthesis
@@ -515,8 +657,10 @@ def run_agent(user_query: str) -> str:
         
     Requirements: 1.3, 1.4, 1.5, 1.6 - Complete agent workflow with error handling
     """
-    if not user_query or not isinstance(user_query, str) or not user_query.strip():
-        return "Please provide a valid query to search for."
+    # Enhanced input validation
+    is_valid, validation_error = validate_user_query(user_query)
+    if not is_valid:
+        return f"❌ Input Error: {validation_error}"
     
     try:
         # Step 1: Load data
@@ -621,73 +765,203 @@ def run_agent(user_query: str) -> str:
 
 
 def main():
-    """Main Streamlit application entry point"""
-    st.title("Synthetic Memory Lite")
-    
-    # Test data loading functionality
+    """Main Streamlit application entry point with comprehensive error handling"""
     try:
-        email_data, slack_data, document_text = load_data()
+        # Task 6.1: Create main UI components
+        st.title("Synthetic Memory Lite")
+        st.markdown("*AI-powered information retrieval from your personal data*")
         
-        st.success("✅ Data loading successful!")
-        st.write(f"📧 Loaded {len(email_data)} emails")
-        st.write(f"💬 Loaded {len(slack_data)} Slack messages") 
-        st.write(f"📄 Loaded document with {len(document_text)} characters")
+        # Add system status check at startup
+        startup_errors = []
+        
+        # Check data files availability
+        required_files = ["emails.json", "slack_messages.json", "project_notes.txt"]
+        missing_files = []
+        for file in required_files:
+            if not os.path.exists(file):
+                missing_files.append(file)
+        
+        if missing_files:
+            startup_errors.append(f"Missing data files: {', '.join(missing_files)}")
+        
+        # Check API key availability
+        if "GEMINI_API_KEY" not in st.secrets or not st.secrets["GEMINI_API_KEY"].strip():
+            startup_errors.append("GEMINI_API_KEY not configured in Streamlit secrets")
+        
+        # Display startup errors if any
+        if startup_errors:
+            st.error("⚠️ **System Configuration Issues:**")
+            for error in startup_errors:
+                st.write(f"• {error}")
+            st.write("Please resolve these issues before using the application.")
+            st.stop()
+        
+        # Create text input field for user queries with pre-populated demo query
+        user_query = st.text_input(
+            "Enter your context or question:", 
+            value="What was the feedback on Project Phoenix?",
+            help="Ask questions about your emails, Slack messages, and documents. Keep queries clear and specific.",
+            max_chars=500
+        )
+        
+        # Show character count for user awareness
+        if user_query:
+            char_count = len(user_query)
+            if char_count > 400:
+                st.warning(f"Query length: {char_count}/500 characters")
+            elif char_count > 0:
+                st.caption(f"Query length: {char_count}/500 characters")
+        
+        # Add "Find Context" button to trigger agent workflow
+        if st.button("Find Context", type="primary"):
+            # Enhanced input validation
+            is_valid, validation_error = validate_user_query(user_query)
+            
+            if not is_valid:
+                st.error(f"❌ {validation_error}")
+                return
+            
+            # Task 6.2: Implement user interaction flow
+            # Add button click handler to execute run_agent() function
+            # Implement st.spinner() with "Thinking..." message during processing
+            with st.spinner("🤖 Analyzing your query and searching through your data..."):
+                try:
+                    # Execute the agent workflow
+                    result = run_agent(user_query)
+                    
+                    # Display agent results using st.write() with proper formatting
+                    st.success("✅ Search completed!")
+                    st.write("### Results")
+                    st.write(result)
+                    
+                except Exception as e:
+                    # Add error display for failed operations
+                    st.error(f"❌ An error occurred while processing your query: {str(e)}")
+                    st.write("**Troubleshooting suggestions:**")
+                    st.write("• Check your internet connection")
+                    st.write("• Verify your Gemini API key is valid")
+                    st.write("• Try rephrasing your query")
+                    st.write("• Check that all data files are present and properly formatted")
+                    
+                    # Offer to show debug information
+                    if st.button("Show Debug Information"):
+                        st.write("**Error Details:**")
+                        st.code(str(e))
+        
+        # Add helpful information section
+        with st.expander("ℹ️ How to use Synthetic Memory Lite", expanded=False):
+            st.write("""
+            **What it does:**
+            - Searches through your emails, Slack messages, and documents
+            - Uses AI to understand your questions and find relevant information
+            - Provides answers with clear source attribution
+            
+            **Example queries:**
+            - "What was the feedback on Project Phoenix?"
+            - "Who mentioned the budget concerns?"
+            - "What are the key points from the project notes?"
+            - "Any messages about the deadline?"
+            
+            **Tips for better results:**
+            - Be specific about what you're looking for
+            - Use key terms that might appear in your data
+            - Ask about specific people, projects, or topics
+            """)
         
     except Exception as e:
-        st.error(f"❌ Data loading failed: {e}")
-        st.write("Please check that all required data files are present and properly formatted.")
-        return
-    
-    # Test Gemini API configuration
-    try:
-        model = configure_gemini_api()
-        st.success("✅ Gemini API configuration successful!")
-        st.write("🤖 Connected to gemini-pro model")
+        st.error(f"❌ **Application Error:** {str(e)}")
+        st.write("The application encountered an unexpected error during startup.")
+        st.write("Please check your configuration and try refreshing the page.")
         
-    except Exception as e:
-        st.error(f"❌ Gemini API configuration failed: {e}")
-        st.write("Please check your API key configuration in Streamlit secrets.")
-        return
+        # Show debug info for developers
+        if st.checkbox("Show technical details"):
+            st.code(f"Error: {str(e)}\nType: {type(e).__name__}")
+            import traceback
+            st.code(traceback.format_exc())
     
-    # Show sample data for verification
-    if st.checkbox("Show sample data"):
-        st.subheader("Sample Email")
-        if email_data:
-            st.json(email_data[0])
+        # Optional: Add expandable section for debugging/testing (can be removed in production)
+        with st.expander("🔧 System Status & Debug Information", expanded=False):
+            st.write("This section shows system status for troubleshooting purposes.")
             
-        st.subheader("Sample Slack Message")
-        if slack_data:
-            st.json(slack_data[0])
+            col1, col2 = st.columns(2)
             
-        st.subheader("Document Preview")
-        st.text(document_text[:500] + "..." if len(document_text) > 500 else document_text)
-    
-    # Test search functionality
-    if st.checkbox("Test search functions"):
-        st.subheader("Search Function Testing")
-        
-        test_query = st.text_input("Enter test search query:", value="Phoenix")
-        
-        if test_query:
-            # Test email search
-            email_results = search_emails(test_query, email_data)
-            st.write(f"📧 Email search results: {len(email_results)} matches")
-            if email_results:
-                for i, email in enumerate(email_results[:2]):  # Show first 2 results
-                    st.write(f"**Email {i+1}:** {email['subject']}")
+            with col1:
+                st.write("**📁 Data Files Status:**")
+                # Test data loading functionality
+                try:
+                    email_data, slack_data, document_text = load_data()
+                    
+                    st.success("✅ Data loading successful!")
+                    st.write(f"📧 Emails: {len(email_data)} loaded")
+                    st.write(f"💬 Slack messages: {len(slack_data)} loaded") 
+                    st.write(f"📄 Document: {len(document_text):,} characters")
+                    
+                    # Show sample data structure
+                    if st.checkbox("Show sample data structure"):
+                        if email_data:
+                            st.write("**Sample email structure:**")
+                            sample_email = {k: str(v)[:50] + "..." if len(str(v)) > 50 else v 
+                                          for k, v in email_data[0].items()}
+                            st.json(sample_email)
+                        
+                        if slack_data:
+                            st.write("**Sample Slack message structure:**")
+                            sample_slack = {k: str(v)[:50] + "..." if len(str(v)) > 50 else v 
+                                          for k, v in slack_data[0].items()}
+                            st.json(sample_slack)
+                    
+                except Exception as e:
+                    st.error(f"❌ Data loading failed: {e}")
+                    st.write("Check that all required data files are present and properly formatted.")
             
-            # Test Slack search
-            slack_results = search_slack(test_query, slack_data)
-            st.write(f"💬 Slack search results: {len(slack_results)} matches")
-            if slack_results:
-                for i, msg in enumerate(slack_results[:2]):  # Show first 2 results
-                    st.write(f"**Message {i+1}:** {msg['message'][:100]}...")
+            with col2:
+                st.write("**🤖 API Configuration Status:**")
+                # Test Gemini API configuration
+                try:
+                    model = configure_gemini_api()
+                    st.success("✅ Gemini API connected!")
+                    st.write("🔗 Model: gemini-pro")
+                    
+                    # Test API responsiveness
+                    if st.button("Test API Response Time"):
+                        import time
+                        start_time = time.time()
+                        try:
+                            test_response = model.generate_content("Hello", 
+                                generation_config=genai.types.GenerationConfig(max_output_tokens=5))
+                            response_time = time.time() - start_time
+                            st.write(f"⚡ Response time: {response_time:.2f}s")
+                            if response_time > 3:
+                                st.warning("API response is slow")
+                            else:
+                                st.success("API response is fast")
+                        except Exception as e:
+                            st.error(f"API test failed: {e}")
+                    
+                except Exception as e:
+                    st.error(f"❌ Gemini API failed: {e}")
+                    st.write("Check your API key configuration in Streamlit secrets.")
             
-            # Test document search
-            doc_result = search_documents(test_query, document_text)
-            st.write(f"📄 Document search: {'Match found' if doc_result else 'No match'}")
-            if doc_result:
-                st.write("Document contains the search term")
+            # System information
+            st.write("**💻 System Information:**")
+            import sys
+            import platform
+            st.write(f"• Python version: {sys.version.split()[0]}")
+            st.write(f"• Platform: {platform.system()} {platform.release()}")
+            st.write(f"• Streamlit version: {st.__version__}")
+            
+            # Environment check
+            st.write("**🔐 Environment Check:**")
+            secrets_status = "✅ Configured" if "GEMINI_API_KEY" in st.secrets else "❌ Missing"
+            st.write(f"• GEMINI_API_KEY: {secrets_status}")
+            
+            files_status = []
+            for file in ["emails.json", "slack_messages.json", "project_notes.txt"]:
+                status = "✅" if os.path.exists(file) else "❌"
+                files_status.append(f"• {file}: {status}")
+            
+            for status in files_status:
+                st.write(status)
 
 
 if __name__ == "__main__":
