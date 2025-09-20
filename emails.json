@@ -1,0 +1,32 @@
+[
+  {
+    "from": "sarah.chen@company.com",
+    "date": "2024-03-12",
+    "subject": "Project Phoenix - Initial Feedback",
+    "body": "Hi team, I've reviewed the Project Phoenix proposal and I'm impressed with the technical approach. The architecture looks solid and the timeline seems realistic. My main concern is around the user experience - we should consider adding more user testing phases. Overall, this looks like a strong foundation to build on. Let's discuss the budget allocation in tomorrow's meeting."
+  },
+  {
+    "from": "mike.rodriguez@company.com",
+    "date": "2024-03-15",
+    "subject": "Re: Project Phoenix - Budget Concerns",
+    "body": "Sarah, thanks for the feedback on Project Phoenix. I agree about the UX testing, but I'm worried about the budget implications. We're already at 85% of our Q2 allocation. Could we phase the UX testing into Q3? Also, the development team estimates are looking optimistic - we might need a 20% buffer for unexpected issues."
+  },
+  {
+    "from": "alex.kim@company.com",
+    "date": "2024-03-18",
+    "subject": "Project Phoenix - Technical Deep Dive",
+    "body": "Team, I've completed the technical review of Project Phoenix. The proposed microservices architecture is well-designed, but I have concerns about the database scaling approach. We should consider implementing read replicas from day one rather than waiting for performance issues. The API design looks clean and RESTful. Security review is still pending - waiting on the security team's availability."
+  },
+  {
+    "from": "lisa.wong@company.com",
+    "date": "2024-03-20",
+    "subject": "Marketing Strategy for Project Phoenix",
+    "body": "Hi everyone, from a marketing perspective, Project Phoenix has huge potential. The target audience research shows strong demand for this type of solution. We should start building buzz early - maybe a beta program with select customers? The competitive analysis shows we'd be first to market with this feature set. I'm excited to see this move forward!"
+  },
+  {
+    "from": "david.thompson@company.com",
+    "date": "2024-03-22",
+    "subject": "Project Phoenix - Go/No-Go Decision",
+    "body": "After reviewing all the feedback, I'm recommending we proceed with Project Phoenix. The technical foundation is solid, we have market validation, and despite budget concerns, the ROI projections are strong. Let's address Mike's concerns by implementing a phased approach - core features in Q2, UX enhancements in Q3. Security review must be completed before we start development."
+  }
+]
