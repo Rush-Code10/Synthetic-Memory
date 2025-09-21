@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Memory Lite - AI-Powered Information Retrieval</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%236366f1'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='40' font-family='Arial'>M</text></svg>">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Initializing Synthetic Memory Lite</h2>
+            <p>Loading AI models and data sources...</p>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-app" class="main-app hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="logo-text">
+                            <h1>Synthetic Memory Lite</h1>
+                            <span class="logo-subtitle">AI-Powered Information Retrieval</span>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="settings-btn" class="btn btn-secondary">
+                            <i class="fas fa-cog"></i>
+                            Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Hero Section -->
+                <section class="hero">
+                    <div class="hero-content">
+                        <div class="hero-badge">
+                            <span class="badge-text">Advanced AI Technology</span>
+                        </div>
+                        <h2 class="hero-title">
+                            Intelligent Information Retrieval
+                            <span class="gradient-text">from Your Personal Data</span>
+                        </h2>
+                        <p class="hero-subtitle">
+                            Search through emails, Slack messages, and documents with advanced AI synthesis 
+                            and professional text-to-speech capabilities.
+                        </p>
+                        <div class="hero-features">
+                            <div class="feature-item">
+                                <i class="fas fa-search"></i>
+                                <span>Smart Search</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-microphone"></i>
+                                <span>Voice Output</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-link"></i>
+                                <span>Source Attribution</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Query Section -->
+                <section class="query-section">
+                    <div class="query-card">
+                        <div class="query-header">
+                            <div class="query-title-section">
+                                <h3>Search Your Data</h3>
+                                <p class="query-description">Enter your question to search through emails, messages, and documents</p>
+                            </div>
+                        </div>
+                        
+                        <div class="query-form">
+                            <div class="input-group">
+                                <div class="input-wrapper">
+                                    <input 
+                                        type="text" 
+                                        id="query-input" 
+                                        placeholder="What was the feedback on Project Phoenix?"
+                                        maxlength="500"
+                                        autocomplete="off"
+                                    >
+                                    <div class="input-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                </div>
+                                <button id="search-btn" class="btn btn-primary">
+                                    <span class="btn-text">Search</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                            <div class="input-footer">
+                                <div class="char-counter">
+                                    <span id="char-count">0/500 characters</span>
+                                </div>
+                                <div class="quick-queries">
+                                    <span class="quick-queries-label">Quick queries:</span>
+                                    <div class="quick-query-buttons">
+                                        <button class="quick-query" data-query="What was the feedback on Project Phoenix?">
+                                            Project Phoenix Feedback
+                                        </button>
+                                        <button class="quick-query" data-query="Who mentioned budget concerns?">
+                                            Budget Concerns
+                                        </button>
+                                        <button class="quick-query" data-query="What are the key points from the project notes?">
+                                            Project Notes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- Results Section -->
+                <section class="results-section" id="results-section">
+                    <div class="results-card">
+                        <div class="results-header">
+                            <div class="results-title-section">
+                                <h3>Analysis Results</h3>
+                                <p class="results-description">AI-powered insights from your data</p>
+                            </div>
+                            <div class="results-actions">
+                                <button id="speak-results" class="btn btn-outline" style="display: none;">
+                                    <i class="fas fa-volume-up"></i>
+                                    Speak Results
+                                </button>
+                                <button id="clear-results" class="btn btn-outline">
+                                    <i class="fas fa-trash"></i>
+                                    Clear Results
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="results-content" id="results-content">
+                            <div class="empty-state">
+                                <i class="fas fa-search"></i>
+                                <h4>Ready to Search</h4>
+                                <p>Enter your question above to get AI-powered insights from your data.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Inline Audio Player -->
+                        <div class="inline-audio-player" id="inline-audio-player" style="display: none;">
+                            <div class="audio-player-container">
+                                <div class="audio-controls">
+                                    <button id="audio-play-pause" class="audio-btn play-btn">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <button id="audio-stop" class="audio-btn stop-btn">
+                                        <i class="fas fa-stop"></i>
+                                    </button>
+                                    <button id="audio-close" class="audio-btn close-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="audio-progress-container">
+                                    <div class="audio-progress-bar">
+                                        <div class="audio-progress-fill"></div>
+                                    </div>
+                                    <div class="audio-time">
+                                        <span class="current-time">0:00</span>
+                                        <span class="total-time">0:00</span>
+                                    </div>
+                                </div>
+                                <div class="audio-status">
+                                    <span class="status-text">Ready to play...</span>
+                                    <div class="audio-loading" style="display: none;">
+                                        <div class="loading-spinner"></div>
+                                        <span>Generating audio...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Agent Thinking Panel -->
+                <section class="agent-panel" id="agent-panel">
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-title-section">
+                                <h3>Processing Details</h3>
+                                <p class="agent-description">View the AI's analysis process</p>
+                            </div>
+                            <button id="toggle-agent" class="btn btn-outline">
+                                <i class="fas fa-eye"></i>
+                                Show Details
+                            </button>
+                        </div>
+                        
+                        <div class="agent-content" id="agent-content">
+                            <div class="thinking-steps" id="thinking-steps">
+                                <!-- Agent thinking steps will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Text-to-Speech Settings</h4>
+                    <div class="settings-controls">
+                        <div class="control-group">
+                            <label for="voice-select">Voice</label>
+                            <select id="voice-select" class="form-select">
+                                <option value="English (US) - Female">English (US) - Female</option>
+                                <option value="English (US) - Male">English (US) - Male</option>
+                                <option value="English (UK) - Female">English (UK) - Female</option>
+                                <option value="English (UK) - Male">English (UK) - Male</option>
+                                <option value="English (AU) - Female">English (AU) - Female</option>
+                                <option value="English (CA) - Female">English (CA) - Female</option>
+                                <option value="English (IN) - Female">English (IN) - Female</option>
+                                <option value="English (IE) - Female">English (IE) - Female</option>
+                                <option value="English (ZA) - Female">English (ZA) - Female</option>
+                                <option value="English (NZ) - Female">English (NZ) - Female</option>
+                                <option value="English (Slow) - Female">English (Slow) - Female</option>
+                                <option value="English (Slow) - Male">English (Slow) - Male</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="speed-slider">Speed</label>
+                            <div class="slider-container">
+                                <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+                                <span id="speed-value">1.0x</span>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <button id="preview-voice" class="btn btn-outline">
+                                <i class="fas fa-play"></i>
+                                Preview Voice
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Player Modal -->
+    <div id="audio-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Audio Response</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="audio-player">
+                    <audio id="audio-player" controls>
+                        Your browser does not support the audio element.
+                    </audio>
+                    <div class="audio-controls">
+                        <button id="download-audio" class="btn btn-primary">
+                            <i class="fas fa-download"></i>
+                            Download MP3
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="toast error-toast">
+        <div class="toast-content">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-message">An error occurred</span>
+        </div>
+        <button class="toast-close">&times;</button>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="success-toast" class="toast success-toast">
+        <div class="toast-content">
+            <i class="fas fa-check-circle"></i>
+            <span id="success-message">Operation completed successfully</span>
+        </div>
+        <button class="toast-close">&times;</button>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
