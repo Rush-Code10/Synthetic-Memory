@@ -36,7 +36,8 @@
     --gray-900: #0f172a;
     
     /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: 'Poppins', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    --font-family-ui: 'Poppins', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
@@ -275,6 +276,7 @@ body {
     padding: var(--spacing-3) var(--spacing-4);
     border: none;
     border-radius: var(--radius-lg);
+    font-family: var(--font-family-ui);
     font-size: var(--font-size-sm);
     font-weight: 600;
     text-decoration: none;
@@ -325,14 +327,18 @@ body {
 }
 
 .btn-outline {
-    background: transparent;
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 .btn-outline:hover {
-    background: var(--primary-color);
+    background: rgba(255, 255, 255, 0.2);
     color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Main Content */
@@ -907,19 +913,23 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: var(--spacing-6) var(--spacing-8);
-    background: linear-gradient(135deg, var(--gray-800), var(--gray-900));
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     color: white;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .agent-title-section h3 {
     font-size: var(--font-size-xl);
     font-weight: 700;
     margin-bottom: var(--spacing-1);
+    color: white; 
 }
 
 .agent-description {
     font-size: var(--font-size-sm);
     opacity: 0.9;
+    color: rgba(255, 255, 255, 0.9); 
 }
 
 .agent-content {
@@ -1998,44 +2008,7 @@ button:focus {
     }
 }
 
-/* Professional Loading Animation */
-.processing-animation {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    color: white;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    padding: var(--spacing-3) var(--spacing-5);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
-    position: relative;
-    overflow: hidden;
-    border: 2px solid var(--primary-color);
-}
-
-.processing-animation::before {
-    content: '';
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    position: relative;
-    z-index: 1;
-}
-
-.processing-animation::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    animation: shimmer 2s infinite;
-}
+/* Professional Loading Animation - Removed */
 
 /* Search Button Loading State */
 .btn.loading {
@@ -2044,20 +2017,9 @@ button:focus {
     cursor: not-allowed;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
     border: 2px solid var(--primary-color);
     transform: none !important;
-}
-
-.btn.loading::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    animation: shimmer 2s infinite;
 }
 
 .btn.loading::after {
@@ -2065,26 +2027,22 @@ button:focus {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top: 2px solid white;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
     z-index: 1;
 }
 
 .btn.loading .btn-text {
-    display: none;
+    opacity: 0;
 }
 
-.btn.loading .loading-text {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    font-weight: 600;
-    font-size: var(--font-size-base);
+.btn.loading i {
+    opacity: 0;
 }
 
 .loading-text {
@@ -2207,15 +2165,13 @@ button:focus {
 }
 
 .agent-card {
-    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+    background: white;
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-6);
+    overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(10px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    overflow: hidden;
 }
 
 .agent-card::before {
@@ -2252,13 +2208,14 @@ button:focus {
 
 .agent-title-section h3 {
     font-size: var(--font-size-xl);
-    font-weight: 600;
-    color: var(--gray-800);
+    font-weight: 1000;
+    color: white;
+    font-size: 40;
     margin-bottom: var(--spacing-1);
 }
 
 .agent-description {
-    color: var(--gray-600);
+    color: var(--white-600);
     font-size: var(--font-size-sm);
     font-weight: 400;
 }
@@ -2304,6 +2261,7 @@ button:focus {
     animation: slideInRight 0.6s ease-out;
     position: relative;
     overflow: hidden;
+    border-left: 4px solid var(--primary-color);
 }
 
 .thinking-step::before {
@@ -2315,12 +2273,14 @@ button:focus {
     height: 100%;
     background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-light) 100%);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    opacity: 0.8;
 }
 
 .thinking-step:hover {
     transform: translateX(4px) translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.15);
     border-color: var(--primary-color);
+    border-left-color: var(--primary-light);
 }
 
 .step-header {
@@ -2331,17 +2291,18 @@ button:focus {
 }
 
 .step-number {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
     color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
+    font-weight: 700;
     font-size: var(--font-size-sm);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .step-title {
@@ -2374,33 +2335,39 @@ button:focus {
     display: inline-flex;
     align-items: center;
     gap: var(--spacing-2);
-    padding: var(--spacing-1) var(--spacing-3);
-    border-radius: var(--radius-full);
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius-lg);
     font-size: var(--font-size-xs);
-    font-weight: 500;
-    margin-top: var(--spacing-2);
+    font-weight: 600;
+    margin-top: var(--spacing-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .step-status.processing {
-    background: rgba(59, 130, 246, 0.1);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
     color: var(--primary-color);
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .step-status.completed {
-    background: rgba(16, 185, 129, 0.1);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
     color: var(--success-color);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .step-status.error {
-    background: rgba(239, 68, 68, 0.1);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
     color: var(--error-color);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
 .step-status i {
     animation: pulse 2s infinite;
+    font-size: var(--font-size-sm);
 }
 
 /* Enhanced Button States */

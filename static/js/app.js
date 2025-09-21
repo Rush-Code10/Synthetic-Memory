@@ -308,7 +308,7 @@ class SyntheticMemoryApp {
             if (loading) {
                 searchBtn.classList.add('loading');
                 searchBtn.disabled = true;
-                searchBtn.innerHTML = '<span class="processing-animation">Analyzing Data...</span>';
+                // Keep original content but make it invisible - loading wheel will show via CSS
             } else {
                 searchBtn.classList.remove('loading');
                 searchBtn.disabled = false;
