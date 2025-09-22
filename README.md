@@ -2,7 +2,7 @@
 
 A professional, modern web application for AI-powered information retrieval and synthesis with advanced text-to-speech capabilities.
 
-## 🚀 Features
+## Features
 
 ### Core Functionality
 - **Multi-source Search**: Intelligently searches across emails, Slack messages, and documents
@@ -24,7 +24,7 @@ A professional, modern web application for AI-powered information retrieval and 
 - **Real-time Feedback**: Live status indicators and progress tracking
 - **Accessibility**: Keyboard navigation and screen reader support
 
-## 🎨 Design Features
+## Design Features
 
 ### Visual Elements
 - **Gradient Backgrounds**: Beautiful color gradients throughout the interface
@@ -40,7 +40,7 @@ A professional, modern web application for AI-powered information retrieval and 
 - **Modal Dialogs**: Clean popup interfaces for audio playback
 - **Toast Notifications**: Non-intrusive success/error messages
 
-## 🛠️ Installation
+## Installation
 
 ### Prerequisites
 - Python 3.8+
@@ -81,7 +81,7 @@ A professional, modern web application for AI-powered information retrieval and 
 pip install flask flask-session google-generativeai gtts toml
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 synthetic-memory/
@@ -103,7 +103,7 @@ synthetic-memory/
 └── test_flask_app.py              # Test script
 ```
 
-## 🎯 Usage
+## Usage
 
 ### Basic Search
 1. Enter your question in the search box
@@ -124,7 +124,7 @@ Use the pre-built quick query buttons:
 - "Budget Concerns"
 - "Project Notes"
 
-## 🔧 API Endpoints
+## API Endpoints
 
 ### Main Endpoints
 - `GET /` - Main application page
@@ -175,7 +175,7 @@ Use the pre-built quick query buttons:
 }
 ```
 
-## 🎨 Customization
+## Customization
 
 ### Styling
 Modify `static/css/style.css` to customize:
@@ -198,7 +198,7 @@ Modify `app.py` to add:
 - Enhanced processing logic
 - Custom error handling
 
-## 🧪 Testing
+## Testing
 
 ### Run Tests
 ```bash
@@ -206,13 +206,13 @@ python test_flask_app.py
 ```
 
 ### Test Coverage
-- ✅ Application startup
-- ✅ API endpoints
-- ✅ Query processing
-- ✅ TTS functionality
-- ✅ Error handling
+- Application startup
+- API endpoints
+- Query processing
+- TTS functionality
+- Error handling
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Setup
 1. **Environment Variables**
@@ -237,21 +237,21 @@ python test_flask_app.py
    CMD ["python", "app.py"]
    ```
 
-## 🔒 Security
+## Security
 
 - **Input Validation**: All user inputs are validated and sanitized
 - **API Key Protection**: Secure storage in configuration files
 - **Error Handling**: Graceful error handling without information leakage
 - **Rate Limiting**: Built-in protection against abuse
 
-## 📊 Performance
+## Performance
 
 - **Fast Response Times**: < 2 seconds for typical queries
 - **Efficient Processing**: Optimized search algorithms
 - **Caching**: Session-based caching for improved performance
 - **Responsive UI**: Smooth animations without performance impact
 
-## 🌟 Key Improvements Over Streamlit
+## Key Improvements Over Streamlit
 
 1. **Professional UI**: Modern, polished interface with animations
 2. **Better Performance**: Faster loading and more responsive
@@ -262,7 +262,7 @@ python test_flask_app.py
 7. **API-First Design**: Easy to extend and integrate
 8. **Production Ready**: Proper error handling and logging
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -270,11 +270,11 @@ python test_flask_app.py
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is for educational and demonstration purposes.
 
-## 🆘 Support
+## Support
 
 For issues and questions:
 1. Check the test results: `python test_flask_app.py`
@@ -284,4 +284,4 @@ For issues and questions:
 
 ---
 
-**Synthetic Memory Lite** - Transforming how you interact with your personal data through AI-powered search and synthesis. 🧠✨
+**Synthetic Memory Lite** - Transforming how you interact with your personal data through AI-powered search and synthesis.
